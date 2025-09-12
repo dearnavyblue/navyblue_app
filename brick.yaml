@@ -1,0 +1,13 @@
+# brick.yaml
+providers:
+  RestProvider:
+    url: ${APP_CONFIG_API_BASE_URL} # This will use your AppConfig.apiBaseUrl
+  SqliteProvider:
+    database_name: ${APP_CONFIG_DATABASE_NAME} # This will use your AppConfig.databaseName
+
+adapters:
+  brick_offline_first_with_rest_build:
+    sources:
+      - lib/brick/models/
+    target: lib/brick/
+    schema_target: lib/brick/db/
