@@ -226,10 +226,11 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                     ],
                   ),
                   const SizedBox(height: 12),
-                  LaTeXTextWidget(
-                    text: widget.question.contextText,
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  if (widget.question.contextText != null) ...[
+                    LaTeXTextWidget(
+                        text: widget.question.contextText!,
+                        style: theme.textTheme.bodyMedium),
+                  ],
                 ],
               ),
             ),

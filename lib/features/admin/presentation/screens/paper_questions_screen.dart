@@ -322,12 +322,15 @@ class _PaperQuestionsScreenState extends ConsumerState<PaperQuestionsScreen> {
               const SizedBox(height: 12),
 
               // Question context
-              LaTeXTextWidget(
-                text: question.contextText,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+
+              if (question.contextText != null) ...[
+                LaTeXTextWidget(
+                  text: question.contextText!,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
 
               // Topics and images info
               if (question.topics.isNotEmpty ||
