@@ -5,7 +5,8 @@ class AppConfig {
   static const String appDescription = 'SA Exam Prep with Self-Marking System';
 
   // API Configuration
-  static const String baseUrl = 'http://localhost:3000/v1/';
+  static const String baseUrl =
+      'https://navyblue-api.vercel.app/v1'; // Change for production
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 
