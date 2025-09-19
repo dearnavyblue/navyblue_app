@@ -113,9 +113,11 @@ class MemoTabWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    LaTeXTextWidget(
-                        text: question.contextText,
-                        style: theme.textTheme.bodyMedium),
+                    if (question.contextText != null) ...[
+                      LaTeXTextWidget(
+                          text: question.contextText!,
+                          style: theme.textTheme.bodyMedium),
+                    ],
                     if (question.contextImages.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       ...question.contextImages.map((imageUrl) => Container(
@@ -143,8 +145,7 @@ class MemoTabWidget extends StatelessWidget {
             _buildSimpleQuestionMemo(context, question),
           ] else ...[
             // Multi-part question - show parts
-            ...question.parts
-                .map((part) => _buildQuestionPartMemo(context, part)),
+            ...question.parts.map((part) => _buildQuestionPartMemo(context, part)),
           ],
         ],
       ),
@@ -155,7 +156,7 @@ class MemoTabWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final questionMarksEarned = _calculateQuestionMarks(question);
     final totalMarks = question.solutionSteps
-        .fold<int>(0, (sum, step) => sum + step.marksForThisStep);
+        .fold<int>(0, (sum, step) => sum + (step.marksForThisStep ?? 0));
 
     return Container(
       margin: const EdgeInsets.only(left: 16, bottom: 6),
@@ -327,13 +328,24 @@ class MemoTabWidget extends StatelessWidget {
                   style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                 ),
               ),
-              Text(
-                '${step.marksForThisStep} ${step.marksForThisStep == 1 ? 'mark' : 'marks'}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 10,
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (step.marksForThisStep != null) ...[
+                Text(
+                  '${step.marksForThisStep} ${step.marksForThisStep == 1 ? 'mark' : 'marks'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
+              ] else ...[
+                Text(
+                  'guidance',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.tertiary,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
             ],
           ),
           // Working out section
@@ -428,11 +440,11 @@ class MemoTabWidget extends StatelessWidget {
     );
   }
 
-  int _calculatePartMarks(part) {
-    int earned = 0;
+  num _calculatePartMarks(part) {
+    num earned = 0;
     for (final step in part.solutionSteps) {
       if (stepStatuses[step.id] == 'CORRECT') {
-        earned += step.marksForThisStep as int;
+        earned += step.marksForThisStep ?? 0;
       }
     }
     return earned;
@@ -442,7 +454,7 @@ class MemoTabWidget extends StatelessWidget {
     int earned = 0;
     for (final step in question.solutionSteps) {
       if (stepStatuses[step.id] == 'CORRECT') {
-        earned += step.marksForThisStep;
+        earned += step.marksForThisStep ?? 0;
       }
     }
     return earned;

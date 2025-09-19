@@ -704,7 +704,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                           ),
                         ),
                         Text(
-                          '${allSolutions.length} steps • ${allSolutions.map((s) => s.marksForThisStep).fold(0, (a, b) => a + b)} marks total',
+                          '${allSolutions.length} steps • ${allSolutions.map((s) => s.marksForThisStep ?? 0).fold(0, (a, b) => a + b)} marks total',
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],
@@ -1435,7 +1435,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
 
   int _getTotalMarksFromDirectSteps() {
     return widget.question.solutionSteps
-        .map((step) => step.marksForThisStep)
+        .map((step) => step.marksForThisStep ?? 0) // Handle null values
         .fold(0, (sum, marks) => sum + marks);
   }
 

@@ -131,7 +131,6 @@ class PapersController extends StateNotifier<PapersState> {
         isLoading: false,
         isLoadingMore: false,
         error: 'Failed to load papers: $e',
-        isOffline: true,
       );
     }
   }
@@ -139,10 +138,15 @@ class PapersController extends StateNotifier<PapersState> {
   void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        if (isOnline && state.isOffline) {
+        // Check if we're transitioning from offline to online BEFORE updating state
+        final wasOffline = state.isOffline;
+
+        // Always sync state with connectivity
+        state = state.copyWith(isOffline: !isOnline);
+
+        // Sync when coming back online (transitioning from offline to online)
+        if (isOnline && wasOffline) {
           syncWhenOnline();
-        } else if (!isOnline) {
-          state = state.copyWith(isOffline: true);
         }
       });
     });
@@ -235,12 +239,13 @@ class PapersController extends StateNotifier<PapersState> {
         serverTotalCount: localPapers.length,
         isLoading: false,
         isLoadingMore: false,
-        isOffline: true,
       );
     } catch (e) {
       print('Error loading papers: $e');
       state = state.copyWith(
-          isLoading: false, isLoadingMore: false, isOffline: true);
+        isLoading: false,
+        isLoadingMore: false,
+      );
     }
   }
 
@@ -352,14 +357,12 @@ class PapersController extends StateNotifier<PapersState> {
         state = state.copyWith(
           isLoading: false,
           isLoadingMore: false,
-          isOffline: true,
         );
       }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         isLoadingMore: false,
-        isOffline: true,
       );
     }
   }
@@ -456,7 +459,9 @@ class PapersController extends StateNotifier<PapersState> {
       _syncSearchWithServer(query);
     } catch (e) {
       state = state.copyWith(
-          isLoading: false, error: 'Search failed: $e', isOffline: true);
+        isLoading: false,
+        error: 'Search failed: $e',
+      );
     }
   }
 
@@ -535,13 +540,11 @@ class PapersController extends StateNotifier<PapersState> {
       } else {
         state = state.copyWith(
           isLoading: false,
-          isOffline: true,
         );
       }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        isOffline: true,
       );
     }
   }
@@ -616,7 +619,6 @@ class PapersController extends StateNotifier<PapersState> {
       state = state.copyWith(
         isLoadingFilters: false,
         error: 'Failed to load filters: $e',
-        isOffline: true,
       );
     }
   }
@@ -636,7 +638,6 @@ class PapersController extends StateNotifier<PapersState> {
         state = state.copyWith(
           filters: latestFilters,
           isLoadingFilters: false,
-          isOffline: true,
         );
         return;
       }
@@ -655,7 +656,6 @@ class PapersController extends StateNotifier<PapersState> {
         state = state.copyWith(
           filters: generatedFilters,
           isLoadingFilters: false,
-          isOffline: true,
         );
       } else {
         // No papers available, create empty filters
@@ -675,14 +675,12 @@ class PapersController extends StateNotifier<PapersState> {
         state = state.copyWith(
           filters: emptyFilters,
           isLoadingFilters: false,
-          isOffline: true,
         );
       }
     } catch (e) {
       print('Error loading filters from local: $e');
       state = state.copyWith(
         isLoadingFilters: false,
-        isOffline: true,
       );
     }
   }
@@ -729,7 +727,6 @@ class PapersController extends StateNotifier<PapersState> {
         // Keep using local filters
         state = state.copyWith(
           isLoadingFilters: false,
-          isOffline: true,
         );
       }
     } catch (e) {
@@ -737,7 +734,6 @@ class PapersController extends StateNotifier<PapersState> {
       // Keep using local filters
       state = state.copyWith(
         isLoadingFilters: false,
-        isOffline: true,
       );
     }
   }

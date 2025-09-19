@@ -3,19 +3,32 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ConnectivityService {
   static final Connectivity _connectivity = Connectivity();
-  
+
   static Future<bool> get isOnline async {
-    final result = await _connectivity.checkConnectivity();
-    return result.contains(ConnectivityResult.mobile) || 
-           result.contains(ConnectivityResult.wifi) ||
-           result.contains(ConnectivityResult.ethernet);
+    try {
+      final result = await _connectivity.checkConnectivity();
+
+      return result.any((r) => r != ConnectivityResult.none);
+    } catch (e) {
+      return true; // Default to online if check fails
+    }
   }
-  
-  static Stream<bool> get onConnectivityChanged {
-    return _connectivity.onConnectivityChanged.map((results) {
-      return results.contains(ConnectivityResult.mobile) || 
-             results.contains(ConnectivityResult.wifi) ||
-             results.contains(ConnectivityResult.ethernet);
-    });
+
+  static Stream<bool> get onConnectivityChanged async* {
+    // Emit initial connectivity state first
+    try {
+      yield await isOnline;
+    } catch (e) {
+      yield true;
+    }
+
+    // Then listen for changes
+    await for (final result in _connectivity.onConnectivityChanged) {
+      try {
+        yield result.any((r) => r != ConnectivityResult.none);
+      } catch (e) {
+        yield true;
+      }
+    }
   }
 }

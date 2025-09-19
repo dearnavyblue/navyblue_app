@@ -11,7 +11,7 @@ Future<SolutionStep> _$SolutionStepFromRest(Map<String, dynamic> data,
       stepNumber: data['stepNumber'] as int,
       description: data['description'] as String,
       workingOut: data['workingOut'] as String?,
-      marksForThisStep: data['marksForThisStep'] as int,
+      marksForThisStep: data['marksForThisStep'] as int?,
       solutionImages: data['solutionImages'].toList().cast<String>(),
       teachingNote: data['teachingNote'] as String?,
       orderIndex: data['orderIndex'] as int,
@@ -52,7 +52,9 @@ Future<SolutionStep> _$SolutionStepFromSqlite(Map<String, dynamic> data,
       description: data['description'] as String,
       workingOut:
           data['working_out'] == null ? null : data['working_out'] as String?,
-      marksForThisStep: data['marks_for_this_step'] as int,
+      marksForThisStep: data['marks_for_this_step'] == null
+          ? null
+          : data['marks_for_this_step'] as int?,
       solutionImages:
           jsonDecode(data['solution_images']).toList().cast<String>(),
       teachingNote: data['teaching_note'] == null

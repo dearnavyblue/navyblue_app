@@ -195,22 +195,25 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       _syncUserAttemptsWithServer(page, refresh);
     } catch (e) {
       state = state.copyWith(
-        isLoadingUserAttempts: false,
-        isLoadingMoreAttempts: false,
-        userAttemptsError: 'Failed to load attempts: $e',
-        isInitialized: true,
-        isOffline: true,
-      );
+          isLoadingUserAttempts: false,
+          isLoadingMoreAttempts: false,
+          userAttemptsError: 'Failed to load attempts: $e',
+          isInitialized: true);
     }
   }
 
   void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        if (isOnline && state.isOffline) {
+        // Check if we're transitioning from offline to online BEFORE updating state
+        final wasOffline = state.isOffline;
+
+        // Always sync state with connectivity
+        state = state.copyWith(isOffline: !isOnline);
+
+        // Sync when coming back online (transitioning from offline to online)
+        if (isOnline && wasOffline) {
           syncWhenOnline();
-        } else if (!isOnline) {
-          state = state.copyWith(isOffline: true);
         }
       });
     });
@@ -247,7 +250,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         totalAttemptsCount: localAttempts.length,
         isLoadingUserAttempts: false,
         isLoadingMoreAttempts: false,
-        isOffline: true,
         isInitialized: true,
       );
 
@@ -256,7 +258,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       state = state.copyWith(
         isLoadingUserAttempts: false,
         isLoadingMoreAttempts: false,
-        isOffline: true,
         isInitialized: true,
       );
     }
@@ -332,7 +333,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         state = state.copyWith(
           isLoadingUserAttempts: false,
           isLoadingMoreAttempts: false,
-          isOffline: true,
           isInitialized: true,
         );
       }
@@ -340,7 +340,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       state = state.copyWith(
         isLoadingUserAttempts: false,
         isLoadingMoreAttempts: false,
-        isOffline: true,
         isInitialized: true,
       );
     }
@@ -599,7 +598,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     } catch (e) {
       state = state.copyWith(
         error: 'Failed to load paper: $e',
-        isOffline: true,
       );
     }
   }
@@ -614,7 +612,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         final localPaper = localPapers.first;
         state = state.copyWith(
           paper: localPaper,
-          isOffline: true,
         );
         print('Loaded paper from local database: ${localPaper.title}');
       } else {
@@ -642,11 +639,11 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         print('Synced paper with server: ${serverPaper.title}');
       } else {
         print('Failed to sync paper with server: ${result.error}');
-        state = state.copyWith(isOffline: true);
+        state = state.copyWith();
       }
     } catch (e) {
       print('Error syncing paper with server: $e');
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 
@@ -660,7 +657,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       state = state.copyWith(
         isLoading: false,
         error: 'Failed to load questions: $e',
-        isOffline: true,
       );
     }
   }
@@ -695,7 +691,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         state = state.copyWith(
           allPagesQuestions: questionsByPage,
           totalPages: maxPage,
-          isOffline: true,
         );
 
         print('Organized questions into $maxPage pages offline');
@@ -706,14 +701,12 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       state = state.copyWith(
         allPagesQuestions: {},
         totalPages: 1,
-        isOffline: true,
       );
     } catch (e) {
       print('Error loading questions from local: $e');
       state = state.copyWith(
         allPagesQuestions: {},
         totalPages: 1,
-        isOffline: true,
       );
     }
   }
@@ -759,11 +752,11 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         print('Loaded and cached ${allPages.length} pages from server');
       } else {
         print('Failed to sync questions with server: ${firstPageResult.error}');
-        state = state.copyWith(isOffline: true);
+        state = state.copyWith();
       }
     } catch (e) {
       print('Error syncing questions with server: $e');
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 
@@ -856,7 +849,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       final syncedStep = stepAttempt.copyWith(needsSync: false);
       await _repository.upsert<StepAttempt>(syncedStep);
     } catch (e) {
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 
@@ -905,14 +898,14 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         for (final part in question.parts) {
           for (final step in part.solutionSteps) {
             totalSteps++;
-            totalMarks += step.marksForThisStep;
+            totalMarks += step.marksForThisStep ?? 0; // Handle null
 
             final status = state.stepStatuses[step.id];
             if (status != null && status != 'NOT_ATTEMPTED') {
               markedSteps++;
               if (status == 'CORRECT') {
                 correctSteps++;
-                earnedMarks += step.marksForThisStep;
+                earnedMarks += step.marksForThisStep ?? 0; // Handle null
               }
             }
           }
@@ -921,14 +914,14 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         // Handle simple questions with direct solution steps
         for (final step in question.solutionSteps) {
           totalSteps++;
-          totalMarks += step.marksForThisStep;
+          totalMarks += step.marksForThisStep ?? 0; // Handle null
 
           final status = state.stepStatuses[step.id];
           if (status != null && status != 'NOT_ATTEMPTED') {
             markedSteps++;
             if (status == 'CORRECT') {
               correctSteps++;
-              earnedMarks += step.marksForThisStep;
+              earnedMarks += step.marksForThisStep ?? 0; // Handle null
             }
           }
         }
@@ -972,11 +965,11 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         print('Successfully synced new attempt with server');
       } else {
         print('Failed to sync attempt with server: ${result.error}');
-        state = state.copyWith(isOffline: true);
+        state = state.copyWith();
       }
     } catch (e) {
       print('Error syncing attempt with server: $e');
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 
@@ -1013,11 +1006,11 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         print('Successfully synced resumed attempt with server');
       } else {
         print('Failed to sync resumed attempt: ${result.error}');
-        state = state.copyWith(isOffline: true);
+        state = state.copyWith();
       }
     } catch (e) {
       print('Error syncing resumed attempt: $e');
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 
@@ -1077,7 +1070,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
 
     await _repository.upsert<StudentAttempt>(offlineAttempt);
     await _loadCompleteAttemptDataOfflineFirst(offlineAttempt, config);
-    state = state.copyWith(isOffline: true);
+    state = state.copyWith();
   }
 
   // Timer Management
@@ -1283,7 +1276,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       }
     } catch (e) {
       print('Error syncing completed attempt: $e');
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 

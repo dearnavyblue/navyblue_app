@@ -107,10 +107,11 @@ class PaperTabWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    LaTeXTextWidget(
-                      text: question.contextText,
-                      style: theme.textTheme.bodyLarge,
-                    ),
+                    if (question.contextText != null) ...[
+                      LaTeXTextWidget(
+                          text: question.contextText!,
+                          style: theme.textTheme.bodyLarge),
+                    ],
                     if (question.contextImages.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       ...question.contextImages.map(

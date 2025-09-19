@@ -83,7 +83,6 @@ class HomeController extends StateNotifier<HomeState> {
         isLoadingProgress: false,
         isLoadingAttempts: false,
         error: 'Failed to load dashboard data: $e',
-        isOffline: true,
       );
     }
   }
@@ -91,10 +90,15 @@ class HomeController extends StateNotifier<HomeState> {
   void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        if (isOnline && state.isOffline) {
+        // Check if we're transitioning from offline to online BEFORE updating state
+        final wasOffline = state.isOffline;
+
+        // Always sync state with connectivity
+        state = state.copyWith(isOffline: !isOnline);
+
+        // Sync when coming back online (transitioning from offline to online)
+        if (isOnline && wasOffline) {
           syncWhenOnline();
-        } else if (!isOnline) {
-          state = state.copyWith(isOffline: true);
         }
       });
     });
@@ -127,13 +131,11 @@ class HomeController extends StateNotifier<HomeState> {
         progressSummary: localProgress,
         isLoadingProgress: false,
         isLoadingAttempts: false,
-        isOffline: true,
       );
     } catch (e) {
       state = state.copyWith(
         isLoadingProgress: false,
         isLoadingAttempts: false,
-        isOffline: true,
       );
     }
   }
@@ -314,10 +316,10 @@ class HomeController extends StateNotifier<HomeState> {
       if (progressSuccess || attemptsSuccess) {
         state = state.copyWith(isOffline: false);
       } else {
-        state = state.copyWith(isOffline: true);
+        state = state.copyWith();
       }
     } catch (e) {
-      state = state.copyWith(isOffline: true);
+      state = state.copyWith();
     }
   }
 

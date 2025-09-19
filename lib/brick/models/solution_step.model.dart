@@ -26,7 +26,7 @@ class SolutionStep extends OfflineFirstWithRestModel {
   final String? workingOut;
 
   @Rest(name: 'marksForThisStep')
-  final int marksForThisStep;
+  final int? marksForThisStep;
 
   @Rest(name: 'solutionImages')
   final List<String> solutionImages;

@@ -2,7 +2,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:navyblue_app/brick/models/user.model.dart';
 import 'package:navyblue_app/core/providers/connectivity_providers.dart';
-import 'package:navyblue_app/core/services/connectivity_service.dart';
 import '../../domain/providers/auth_use_case_providers.dart';
 import '../../../../brick/repository.dart';
 
@@ -62,63 +61,49 @@ class AuthController extends StateNotifier<AuthState> {
 
   AuthController(this._ref) : super(const AuthState());
 
-Future<void> initialize() async {
+  Future<void> initialize() async {
     if (_initializationStarted) return;
     _initializationStarted = true;
 
-    print('Auth initialization starting...');
-    
     try {
       state = state.copyWith(isLoading: true);
-      await _loadUserFromLocal();
-      
-      // Add connectivity listener AFTER initialization
       _setupConnectivityListener();
-      
-      // Don't wait for server sync
+      await _loadUserFromLocal();
       unawaited(_syncUserWithServer());
-      
-      print('Auth controller initialized successfully');
     } catch (e) {
-      print('Auth initialization error: $e');
       state = state.copyWith(
         isLoading: false,
         isInitialized: true,
         error: 'Initialization failed: ${e.toString()}',
-        isOffline: true,
       );
     }
   }
 
-    void _setupConnectivityListener() {
+  void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        if (isOnline && state.isOffline) {
+        // Check if we're transitioning from offline to online BEFORE updating state
+        final wasOffline = state.isOffline;
+
+        // Always sync state with connectivity
+        state = state.copyWith(isOffline: !isOnline);
+
+        // Sync when coming back online (transitioning from offline to online)
+        if (isOnline && wasOffline) {
           syncWhenOnline();
-        } else if (!isOnline) {
-          state = state.copyWith(isOffline: true);
         }
       });
     });
   }
 
-  Future<void> _initialize() async {
-    try {
-      state = state.copyWith(isLoading: true);
-
-      await _loadUserFromLocal();
-
-      // Don't wait for server sync - do it in background
-      unawaited(_syncUserWithServer());
-    } catch (e) {
-      print('Auth initialization error: $e');
-      state = state.copyWith(
-        isLoading: false,
-        isInitialized: true,
-        error: 'Initialization failed: ${e.toString()}',
-        isOffline: true,
-      );
+  @override
+  set state(AuthState newState) {
+    if (newState.isOffline != state.isOffline) {
+      print(
+          'AuthController: isOffline changed from ${state.isOffline} to ${newState.isOffline}');
+      print('Stack trace: ${StackTrace.current}');
     }
+    super.state = newState;
   }
 
   Future<void> _loadUserFromLocal() async {
@@ -129,18 +114,12 @@ Future<void> initialize() async {
       state = state.copyWith(
         user: currentUser,
         isLoading: false,
-        isInitialized: true, // Mark as initialized after loading local data
-        isOffline: true,
+        isInitialized: true,
       );
-
-      print(
-          'Auth local load complete: isLoggedIn=${state.isLoggedIn}, isInitialized=${state.isInitialized}');
     } catch (e) {
-      print('Auth local load error: $e');
       state = state.copyWith(
         isLoading: false,
-        isInitialized: true, // Still mark as initialized even on error
-        isOffline: true,
+        isInitialized: true,
       );
     }
   }
@@ -154,18 +133,11 @@ Future<void> initialize() async {
 
       if (serverUser != null) {
         await _repository.upsert<User>(serverUser);
-        state = state.copyWith(
-          user: serverUser,
-          isOffline: false,
-        );
-
+        state = state.copyWith(user: serverUser);
         await _syncPendingUserChangesToServer();
-      } else {
-        state = state.copyWith(isOffline: true);
       }
     } catch (e) {
-      print('Auth server sync error: $e');
-      state = state.copyWith(isOffline: true);
+      // Don't set offline state based on API failures
     }
   }
 
@@ -187,7 +159,7 @@ Future<void> initialize() async {
         }
       }
     } catch (e) {
-      state = state.copyWith(isOffline: true);
+      // Don't set offline state based on sync failures
     }
   }
 
@@ -198,7 +170,6 @@ Future<void> initialize() async {
       state = state.copyWith(
         isLoading: false,
         error: 'No internet connection available',
-        isOffline: true,
       );
       return;
     }
@@ -212,8 +183,7 @@ Future<void> initialize() async {
         state = state.copyWith(
           user: result.user,
           isLoading: false,
-          isInitialized: true, // Ensure initialized after login
-          isOffline: false,
+          isInitialized: true,
         );
       } else {
         state = state.copyWith(
@@ -225,7 +195,6 @@ Future<void> initialize() async {
       state = state.copyWith(
         isLoading: false,
         error: 'Login failed: ${e.toString()}',
-        isOffline: true,
       );
     }
   }
@@ -246,7 +215,6 @@ Future<void> initialize() async {
       state = state.copyWith(
         isLoading: false,
         error: 'No internet connection available',
-        isOffline: true,
       );
       return;
     }
@@ -269,8 +237,7 @@ Future<void> initialize() async {
         state = state.copyWith(
           user: result.user,
           isLoading: false,
-          isInitialized: true, // Ensure initialized after registration
-          isOffline: false,
+          isInitialized: true,
         );
       } else {
         state = state.copyWith(
@@ -282,7 +249,6 @@ Future<void> initialize() async {
       state = state.copyWith(
         isLoading: false,
         error: 'Registration failed: ${e.toString()}',
-        isOffline: true,
       );
     }
   }
@@ -290,73 +256,37 @@ Future<void> initialize() async {
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
 
-    print('Starting logout process...');
-
     if (!state.isOffline) {
       try {
         final logoutUseCase = _ref.read(logoutUseCaseProvider);
         await logoutUseCase();
-        print('Server logout completed');
       } catch (e) {
-        print('Server logout failed, continuing with local logout: $e');
+        // Continue with local logout even if server logout fails
       }
-    } else {
-      print('Offline - skipping server logout');
     }
 
-    // ALWAYS clear tokens locally - this is the critical part
     try {
       if (state.user != null) {
-        // Create user with cleared tokens
         final clearedUser = state.user!.clearAuthTokens();
-
-        // Update local storage
         await _repository.upsert<User>(clearedUser);
-
-        // Update state with cleared user
         state = state.copyWith(
           user: clearedUser,
           isLoading: false,
           error: null,
         );
-
-        print('Local logout completed. isLoggedIn: ${state.isLoggedIn}');
-        print(
-            'User tokens cleared: accessToken=${clearedUser.accessToken}, refreshToken=${clearedUser.refreshToken}');
       } else {
         state = state.copyWith(
           user: null,
           isLoading: false,
           error: null,
         );
-        print('No user to clear, logout completed');
       }
     } catch (e) {
-      print('Local token clearing failed, forcing logout: $e');
-      // Force complete logout even if storage fails
       state = state.copyWith(
         user: null,
         isLoading: false,
         error: null,
       );
-    }
-
-    print('Logout process finished. Final isLoggedIn: ${state.isLoggedIn}');
-  }
-
-  Future<void> _clearAuthTokens() async {
-    try {
-      if (state.user != null) {
-        final userWithoutTokens = state.user!.copyWith(
-          accessToken: null,
-          refreshToken: null,
-          tokenExpiresAt: null,
-          lastLoginAt: null,
-        );
-        await _repository.upsert<User>(userWithoutTokens);
-      }
-    } catch (e) {
-      // Don't throw - logout should always succeed locally
     }
   }
 

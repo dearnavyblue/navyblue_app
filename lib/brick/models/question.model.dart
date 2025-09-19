@@ -18,7 +18,7 @@ class Question extends OfflineFirstWithRestModel {
   final String questionNumber;
 
   @Rest(name: 'contextText')
-  final String contextText;
+  final String? contextText;
 
   @Rest(name: 'contextImages')
   final List<String> contextImages;
