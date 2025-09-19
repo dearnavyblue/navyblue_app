@@ -322,6 +322,13 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
                   children: [
                     PaperTabWidget(
                       questions: state.currentPageQuestions,
+                      instructions: state.paper?.instructions ??
+                          'Read all questions carefully before answering.\n\n'
+                              'Answer ALL questions.\n\n'
+                              'Show all working clearly.\n\n'
+                              'Write your answers in the spaces provided.\n\n'
+                              'Calculators may be used unless otherwise stated.\n\n'
+                              'Time allocation: Plan your time carefully across all questions.',
                       currentPage: state.currentPage,
                       totalPages: state.totalPages,
                       showHints: state.canShowHints,

@@ -5,6 +5,7 @@ import '../../../../brick/models/question.model.dart';
 
 class PaperTabWidget extends StatelessWidget {
   final List<Question> questions;
+  final String? instructions;
   final int currentPage;
   final int totalPages;
   final bool showHints;
@@ -16,6 +17,7 @@ class PaperTabWidget extends StatelessWidget {
   const PaperTabWidget({
     super.key,
     required this.questions,
+    required this.instructions,
     required this.currentPage,
     required this.totalPages,
     required this.showHints,
@@ -33,20 +35,15 @@ class PaperTabWidget extends StatelessWidget {
       children: [
         const SizedBox(height: 32),
 
-        /// Questions content
+        /// Content based on current page
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: questions
-                  .map((question) => _buildQuestion(context, question))
-                  .toList(),
-            ),
+            child: _buildPageContent(context),
           ),
         ),
 
-        /// Navigation footer
+        /// Navigation footer (stays the same)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -76,6 +73,49 @@ class PaperTabWidget extends StatelessWidget {
                 iconAlignment: IconAlignment.end,
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPageContent(BuildContext context) {
+    if (currentPage == 1) {
+      return _buildInstructionsPage(context);
+    } else {
+      // Page 2+ - show questions
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: questions
+            .map((question) => _buildQuestion(context, question))
+            .toList(),
+      );
+    }
+  }
+
+  Widget _buildInstructionsPage(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'INSTRUCTIONS',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: LaTeXTextWidget(
+            text: instructions ?? 'No specific instructions provided.',
+            style: theme.textTheme.bodyMedium,
           ),
         ),
       ],
