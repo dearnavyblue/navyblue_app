@@ -145,7 +145,8 @@ class MemoTabWidget extends StatelessWidget {
             _buildSimpleQuestionMemo(context, question),
           ] else ...[
             // Multi-part question - show parts
-            ...question.parts.map((part) => _buildQuestionPartMemo(context, part)),
+            ...question.organizedParts
+                .map((part) => _buildQuestionPartMemo(context, part)),
           ],
         ],
       ),

@@ -219,7 +219,8 @@ class PaperTabWidget extends StatelessWidget {
             ),
           ] else if (question.isMultiPartQuestion) ...[
             // Multi-part question - show parts
-            ...question.parts.map((part) => _buildQuestionPart(context, part)),
+            ...question.organizedParts
+                .map((part) => _buildQuestionPart(context, part)),
           ],
         ],
       ),

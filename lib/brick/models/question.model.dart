@@ -186,4 +186,20 @@ class Question extends OfflineFirstWithRestModel {
           solutionSteps.map((step) => step.toJson()).toList(), // Add this
     };
   }
+
+  List<QuestionPart> get organizedParts {
+    // Get only top-level parts (nestingLevel 1 or no parent)
+    final topLevelParts = parts
+        .where((part) => part.nestingLevel == 1 || part.parentPartId == null)
+        .toList();
+
+    // For each top-level part, populate its subParts
+    return topLevelParts.map((topPart) {
+      final children =
+          parts.where((part) => part.parentPartId == topPart.id).toList();
+
+      // Return a copy with populated subParts
+      return topPart.copyWith(subParts: children);
+    }).toList();
+  }
 }
