@@ -274,15 +274,21 @@ class HomeController extends StateNotifier<HomeState> {
       }
     }
 
-    final topicBreakdown = topicScores.entries.map((entry) {
+   final topicBreakdown = topicScores.entries.map((entry) {
       final scores = entry.value;
       final avgScore = scores.isNotEmpty
           ? scores.reduce((a, b) => a + b) / scores.length
           : 0.0;
+      final totalAttempted = topicCounts[entry.key] ?? 0;
+      final totalCorrect = scores.where((s) => s == 100.0).length;
+
       return TopicBreakdown(
         topic: entry.key,
-        score: avgScore,
-        attempts: topicCounts[entry.key] ?? 0,
+        overallAccuracy: avgScore,
+        totalAttempted: totalAttempted,
+        totalCorrect: totalCorrect,
+        totalMarksEarned: totalCorrect, // Simplified calculation
+        status: _getReadinessLevel(avgScore),
       );
     }).toList();
 

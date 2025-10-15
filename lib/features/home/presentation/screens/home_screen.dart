@@ -17,6 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   bool _hasLoadedOnce = false;
+  String? _selectedSubject;
 
   @override
   void initState() {
@@ -55,6 +56,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final state = ref.watch(homeControllerProvider);
     final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
+
+if (_selectedSubject == null && state.progressSummary != null) {
+      _selectedSubject = state.progressSummary!.subjects.keys.first;
+    }
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -317,33 +322,275 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildProgressOverview(ThemeData theme, HomeState state) {
+Widget _buildProgressOverview(ThemeData theme, HomeState state) {
+    if (state.progressSummary == null) return const SizedBox.shrink();
+
+    final subjects = state.progressSummary!.subjects;
+    final selectedProgress =
+        _selectedSubject != null ? subjects[_selectedSubject] : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           Text(
-            'Your Progress',
+            'Exam Readiness',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 12),
-          ...state.progressSummary!.subjects.entries.map((entry) {
-            final subject = entry.key;
-            final progress = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildSubjectProgressCard(theme, subject, progress),
-            );
-          }),
+          const SizedBox(height: 4),
+          Text(
+            'See how ready you are for the exams',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Subject Tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: subjects.keys.map((subject) {
+                final isSelected = subject == _selectedSubject;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedSubject = subject;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.black : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Text(
+                        AppConfig.getSubjectDisplayName(subject),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Selected Subject Content
+          if (selectedProgress != null)
+            Card(
+              color: Colors.grey[100], // Gray background
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Subject Header with Status Badge and % Ready
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Text(
+                                AppConfig.getSubjectDisplayName(
+                                    _selectedSubject!),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${selectedProgress.overallReadiness}% Ready',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getReadinessColor(
+                                theme, selectedProgress.readinessLevel),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            selectedProgress.readinessLevel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Overall Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: selectedProgress.overallReadiness / 100,
+                        minHeight: 8,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation(
+                          selectedProgress.overallReadiness > 0
+                              ? _getReadinessColor(
+                                  theme, selectedProgress.readinessLevel)
+                              : Colors.grey[300]!,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Papers Section - Always show Paper 1 and Paper 2
+                    Row(
+                      children: [
+                        // Paper 1
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 1',
+                            selectedProgress.practicePerformance
+                                    .papers['PAPER_1']?.averageScore ??
+                                0,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Paper 2
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 2',
+                            selectedProgress.practicePerformance
+                                    .papers['PAPER_2']?.averageScore ??
+                                0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Topics Breakdown
+                    if (selectedProgress
+                        .practicePerformance.topicBreakdown.isNotEmpty) ...[
+                      ...selectedProgress.practicePerformance.topicBreakdown
+                          .map((topic) {
+                        final topicAccuracy = topic.overallAccuracy;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Topic name with % Ready
+                              Row(
+                                children: [
+                                  Text(
+                                    topic.topic,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${topicAccuracy.toInt()}% Ready',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: topicAccuracy / 100,
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    topicAccuracy > 0
+                                        ? _getReadinessColor(
+                                            theme, topic.status)
+                                        : Colors.grey[300]!,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
+Widget _buildPaperProgress(ThemeData theme, String paperName, double score) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              paperName,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${score.toInt()}% Ready',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: score / 100,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation(
+              score > 0
+                  ? _getReadinessColor(
+                      theme, _getReadinessLevelFromScore(score))
+                  : Colors.grey[300]!,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
   Widget _buildSubjectProgressCard(ThemeData theme, String subject, progress) {
     final readinessColor = _getReadinessColor(theme, progress.readinessLevel);
 
@@ -697,5 +944,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (duration.inHours > 0) return '${duration.inHours}h';
     if (duration.inMinutes > 0) return '${duration.inMinutes}m';
     return 'now';
+  }
+
+  String _getReadinessLevelFromScore(double score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    return 'Needs Work';
   }
 }
