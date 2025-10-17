@@ -1,6 +1,8 @@
+// lib/presentation/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navyblue_app/brick/models/student_attempt.model.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
@@ -18,10 +20,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   bool _hasLoadedOnce = false;
+  String? _selectedSubject;
   int _lastAttemptCount = 0;
   DateTime? _lastRefreshTime;
   Timer? _debounceTimer;
-  String? _selectedSubject;
 
   @override
   void initState() {
@@ -44,7 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && _hasLoadedOnce) {
-      // Only refresh if it's been more than 30 seconds
+      // OPTIMIZATION: Only refresh if it's been more than 30 seconds
       final now = DateTime.now();
       if (_lastRefreshTime == null ||
           now.difference(_lastRefreshTime!) > const Duration(seconds: 30)) {
@@ -71,14 +73,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
 
-    // Debounced listener for attempt changes
+    // OPTIMIZATION: Debounced listener for attempt changes
     ref.listen(userAttemptsControllerProvider, (previous, next) {
       if (previous != null &&
           previous.userAttempts.length != next.userAttempts.length &&
           next.userAttempts.length != _lastAttemptCount) {
         _lastAttemptCount = next.userAttempts.length;
 
+        // Cancel existing timer
         _debounceTimer?.cancel();
+
+        // Debounce refresh by 500ms
         _debounceTimer = Timer(const Duration(milliseconds: 500), () {
           if (mounted && _lastAttemptCount == next.userAttempts.length) {
             ref.read(homeControllerProvider.notifier).loadDashboardData();
@@ -87,6 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     });
 
+    // Set default selected subject if none is selected
     if (_selectedSubject == null && state.progressSummary != null) {
       _selectedSubject = state.progressSummary!.subjects.keys.first;
     }
@@ -155,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // Skeleton loader
+  // OPTIMIZATION: Skeleton loader for better perceived performance
   Widget _buildSkeletonLoader(ThemeData theme) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -386,8 +392,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.rocket_launch),
                 label: const Text('Start Practicing'),
                 style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -409,6 +417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           Text(
             'Exam Readiness',
             style: theme.textTheme.titleLarge?.copyWith(
@@ -424,6 +433,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(height: 16),
+
           // Subject Tabs
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -461,16 +471,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // Selected Subject Details
+
+          // Selected Subject Content
           if (selectedProgress != null)
             Card(
-              color: Colors.grey[100],
+              color: Colors.grey[100], // Gray background
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Subject Header
+                    // Subject Header with Status Badge and % Ready
                     Row(
                       children: [
                         Expanded(
@@ -479,8 +490,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               Text(
                                 AppConfig.getSubjectDisplayName(
                                     _selectedSubject!),
-                                style: theme.textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               const Spacer(),
                               Text(
@@ -515,6 +527,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ],
                     ),
                     const SizedBox(height: 12),
+
+                    // Overall Progress Bar
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
@@ -523,48 +537,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         backgroundColor:
                             theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(
-                          _getReadinessColor(
-                              theme, selectedProgress.readinessLevel),
+                          selectedProgress.overallReadiness > 0
+                              ? _getReadinessColor(
+                                  theme, selectedProgress.readinessLevel)
+                              : Colors.grey[300]!,
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Papers (Paper 1 + 2)
+
+                    // Papers Section - Always show Paper 1 and Paper 2
                     Row(
                       children: [
+                        // Paper 1
                         Expanded(
                           child: _buildPaperProgress(
                             theme,
                             'Paper 1',
-                            selectedProgress.practicePerformance
-                                    .papers['PAPER_1']?.averageScore ??
-                                0,
+                            selectedProgress.practicePerformance.averageScore,
                           ),
                         ),
                         const SizedBox(width: 12),
+                        // Paper 2
                         Expanded(
                           child: _buildPaperProgress(
                             theme,
                             'Paper 2',
-                            selectedProgress.practicePerformance
-                                    .papers['PAPER_2']?.averageScore ??
-                                0,
+                            selectedProgress.examPerformance.averageScore,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Topics
+
+                    // Topics Breakdown
                     if (selectedProgress
-                        .practicePerformance.topicBreakdown.isNotEmpty)
+                        .practicePerformance.topicBreakdown.isNotEmpty) ...[
                       ...selectedProgress.practicePerformance.topicBreakdown
                           .map((topic) {
-                        final accuracy = topic.overallAccuracy;
+                        final topicAccuracy = topic.overallAccuracy;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Topic name with % Ready
                               Row(
                                 children: [
                                   Text(
@@ -575,7 +592,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   ),
                                   const Spacer(),
                                   Text(
-                                    '${accuracy.toInt()}% Ready',
+                                    '${topicAccuracy.toInt()}% Ready',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w500,
@@ -587,12 +604,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
-                                  value: accuracy / 100,
+                                  value: topicAccuracy / 100,
                                   minHeight: 6,
                                   backgroundColor:
                                       theme.colorScheme.surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation(
-                                    _getReadinessColor(theme, topic.status),
+                                    topicAccuracy > 0
+                                        ? _getReadinessColor(
+                                            theme, topic.status)
+                                        : Colors.grey[300]!,
                                   ),
                                 ),
                               ),
@@ -600,6 +620,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                         );
                       }),
+                    ],
                   ],
                 ),
               ),
@@ -665,57 +686,176 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(height: 12),
-          if (state.recentAttempts.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  'No activity yet. Start practicing to see your progress here.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          else
-            ...state.recentAttempts.map(
-              (attempt) => Card(
-                child: ListTile(
-                  title: Text(
-                      AppConfig.getSubjectDisplayName(attempt.paper.subject)),
-                  subtitle: Text(
-                      '${attempt.paper.name} • ${attempt.score.toStringAsFixed(1)}%'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/user-attempts/${attempt.id}'),
-                ),
+          if (state.hasActiveAttempts) ...[
+            Text(
+              'Active Attempts',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w500,
               ),
             ),
+            const SizedBox(height: 8),
+            ...state.activeAttempts.take(3).map((attempt) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildActiveAttemptCard(context, theme, attempt),
+              );
+            }),
+            if (state.activeAttempts.length > 3)
+              TextButton(
+                onPressed: () => context.push('/user-attempts'),
+                child: Text('View all ${state.activeAttempts.length} attempts'),
+              ),
+          ] else ...[
+            _buildNoActivityCard(context, theme),
+          ],
         ],
       ),
     );
   }
 
-  Color _getReadinessColor(ThemeData theme, String level) {
-    switch (level.toLowerCase()) {
-      case 'excellent':
-        return Colors.green;
-      case 'good':
-        return Colors.lightGreen;
-      case 'fair':
-        return Colors.orange;
-      case 'poor':
-        return Colors.redAccent;
-      default:
-        return theme.colorScheme.primary;
-    }
+  Widget _buildActiveAttemptCard(
+      BuildContext context, ThemeData theme, StudentAttempt attempt) {
+    final isExam = attempt.mode == 'EXAM';
+    final timeElapsed = DateTime.now().difference(attempt.startedAt);
+
+    return Card(
+      child: InkWell(
+        onTap: () => context.push('/user-attempts'),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isExam
+                      ? theme.colorScheme.tertiaryContainer
+                      : theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isExam ? Icons.timer : Icons.psychology,
+                  size: 20,
+                  color: isExam
+                      ? theme.colorScheme.onTertiaryContainer
+                      : theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${isExam ? 'Exam' : 'Practice'} in Progress',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Started ${_formatDuration(timeElapsed)} ago',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  String _getReadinessLevelFromScore(double score) {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Poor';
+  Widget _buildNoActivityCard(BuildContext context, ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(
+              Icons.auto_stories_outlined,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No recent activity',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Start practicing to see your progress here',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.go('/papers'),
+              child: const Text('Browse Papers'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorSliver(ThemeData theme, String error) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Something went wrong',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () {
+                  ref.read(homeControllerProvider.notifier).clearError();
+                  _loadDashboardData();
+                },
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _getGreeting() {
@@ -725,38 +865,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return 'Good evening';
   }
 
-  SliverFillRemaining _buildErrorSliver(ThemeData theme, String error) {
-    return SliverFillRemaining(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline,
-                  size: 48, color: Colors.redAccent),
-              const SizedBox(height: 12),
-              Text(
-                'Something went wrong',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: Colors.redAccent),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _loadDashboardData,
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Color _getReadinessColor(ThemeData theme, String level) {
+    switch (level.toLowerCase()) {
+      case 'excellent':
+        return Colors.green;
+      case 'good':
+        return Colors.blue;
+      case 'fair':
+        return Colors.orange;
+      case 'needs work':
+        return Colors.red;
+      default:
+        return theme.colorScheme.primary;
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.inDays > 0) return '${duration.inDays}d';
+    if (duration.inHours > 0) return '${duration.inHours}h';
+    if (duration.inMinutes > 0) return '${duration.inMinutes}m';
+    return 'now';
+  }
+
+  String _getReadinessLevelFromScore(double score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    return 'Needs Work';
   }
 }

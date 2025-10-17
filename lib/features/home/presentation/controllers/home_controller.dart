@@ -290,7 +290,7 @@ class HomeController extends StateNotifier<HomeState> {
       }
     }
 
-    // RESOLVED: Build topic breakdown with enhanced data
+    // Build topic breakdown
     final topicBreakdown = topicScores.entries.map((entry) {
       final scores = entry.value;
       final avgScore = scores.isNotEmpty
@@ -318,10 +318,9 @@ class HomeController extends StateNotifier<HomeState> {
 
   String _getReadinessLevel(double score) {
     if (score >= 80) return 'Excellent';
-    if (score >= 70) return 'Good';
-    if (score >= 60) return 'Average';
-    if (score >= 50) return 'Below Average';
-    return 'Needs Improvement';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    return 'Needs Work';
   }
 
   Future<void> _syncDashboardDataWithServer() async {
