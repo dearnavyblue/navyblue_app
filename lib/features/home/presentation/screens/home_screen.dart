@@ -1,4 +1,3 @@
-// lib/presentation/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +21,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int _lastAttemptCount = 0;
   DateTime? _lastRefreshTime;
   Timer? _debounceTimer;
+  String? _selectedSubject;
 
   @override
   void initState() {
@@ -44,7 +44,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && _hasLoadedOnce) {
-      // OPTIMIZATION: Only refresh if it's been more than 30 seconds
+      // Only refresh if it's been more than 30 seconds
       final now = DateTime.now();
       if (_lastRefreshTime == null ||
           now.difference(_lastRefreshTime!) > const Duration(seconds: 30)) {
@@ -71,17 +71,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
 
-    // OPTIMIZATION: Debounced listener for attempt changes
+    // Debounced listener for attempt changes
     ref.listen(userAttemptsControllerProvider, (previous, next) {
       if (previous != null &&
           previous.userAttempts.length != next.userAttempts.length &&
           next.userAttempts.length != _lastAttemptCount) {
         _lastAttemptCount = next.userAttempts.length;
 
-        // Cancel existing timer
         _debounceTimer?.cancel();
-
-        // Debounce refresh by 500ms
         _debounceTimer = Timer(const Duration(milliseconds: 500), () {
           if (mounted && _lastAttemptCount == next.userAttempts.length) {
             ref.read(homeControllerProvider.notifier).loadDashboardData();
@@ -89,6 +86,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         });
       }
     });
+
+    if (_selectedSubject == null && state.progressSummary != null) {
+      _selectedSubject = state.progressSummary!.subjects.keys.first;
+    }
 
     final isInitialLoading =
         !_hasLoadedOnce || (state.isLoading && !state.hasData);
@@ -154,7 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // OPTIMIZATION: Skeleton loader for better perceived performance
+  // Skeleton loader
   Widget _buildSkeletonLoader(ThemeData theme) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -385,10 +386,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon: const Icon(Icons.rocket_launch),
                 label: const Text('Start Practicing'),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
               ),
             ],
@@ -399,155 +398,255 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildProgressOverview(ThemeData theme, HomeState state) {
+    if (state.progressSummary == null) return const SizedBox.shrink();
+
+    final subjects = state.progressSummary!.subjects;
+    final selectedProgress =
+        _selectedSubject != null ? subjects[_selectedSubject] : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your Progress',
+            'Exam Readiness',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 12),
-          ...state.progressSummary!.subjects.entries.map((entry) {
-            final subject = entry.key;
-            final progress = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildSubjectProgressCard(theme, subject, progress),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubjectProgressCard(ThemeData theme, String subject, progress) {
-    final readinessColor = _getReadinessColor(theme, progress.readinessLevel);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    AppConfig.getSubjectDisplayName(subject),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: readinessColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    progress.readinessLevel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: readinessColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: progress.overallReadiness / 100,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(readinessColor),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${progress.overallReadiness}% Ready',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPerformanceChip(
-                    theme,
-                    'Practice',
-                    '${progress.practicePerformance.averageScore.toInt()}%',
-                    '${progress.practicePerformance.attempts} attempts',
-                    Icons.psychology_outlined,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildPerformanceChip(
-                    theme,
-                    'Exam',
-                    '${progress.examPerformance.averageScore.toInt()}%',
-                    '${progress.examPerformance.attempts} attempts',
-                    Icons.timer_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPerformanceChip(
-    ThemeData theme,
-    String label,
-    String score,
-    String attempts,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 4),
           Text(
-            score,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            attempts,
-            style: theme.textTheme.bodySmall?.copyWith(
+            'See how ready you are for the exams',
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 16),
+          // Subject Tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: subjects.keys.map((subject) {
+                final isSelected = subject == _selectedSubject;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedSubject = subject;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.black : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Text(
+                        AppConfig.getSubjectDisplayName(subject),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Selected Subject Details
+          if (selectedProgress != null)
+            Card(
+              color: Colors.grey[100],
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Subject Header
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Text(
+                                AppConfig.getSubjectDisplayName(
+                                    _selectedSubject!),
+                                style: theme.textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${selectedProgress.overallReadiness}% Ready',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getReadinessColor(
+                                theme, selectedProgress.readinessLevel),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            selectedProgress.readinessLevel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: selectedProgress.overallReadiness / 100,
+                        minHeight: 8,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation(
+                          _getReadinessColor(
+                              theme, selectedProgress.readinessLevel),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Papers (Paper 1 + 2)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 1',
+                            selectedProgress.practicePerformance
+                                    .papers['PAPER_1']?.averageScore ??
+                                0,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 2',
+                            selectedProgress.practicePerformance
+                                    .papers['PAPER_2']?.averageScore ??
+                                0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Topics
+                    if (selectedProgress
+                        .practicePerformance.topicBreakdown.isNotEmpty)
+                      ...selectedProgress.practicePerformance.topicBreakdown
+                          .map((topic) {
+                        final accuracy = topic.overallAccuracy;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    topic.topic,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${accuracy.toInt()}% Ready',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: accuracy / 100,
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    _getReadinessColor(theme, topic.status),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaperProgress(ThemeData theme, String paperName, double score) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              paperName,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${score.toInt()}% Ready',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: score / 100,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation(
+              score > 0
+                  ? _getReadinessColor(
+                      theme, _getReadinessLevelFromScore(score))
+                  : Colors.grey[300]!,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -566,176 +665,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(height: 12),
-          if (state.hasActiveAttempts) ...[
-            Text(
-              'Active Attempts',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+          if (state.recentAttempts.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'No activity yet. Start practicing to see your progress here.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else
+            ...state.recentAttempts.map(
+              (attempt) => Card(
+                child: ListTile(
+                  title: Text(
+                      AppConfig.getSubjectDisplayName(attempt.paper.subject)),
+                  subtitle: Text(
+                      '${attempt.paper.name} • ${attempt.score.toStringAsFixed(1)}%'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/user-attempts/${attempt.id}'),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            ...state.activeAttempts.take(3).map((attempt) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildActiveAttemptCard(context, theme, attempt),
-              );
-            }),
-            if (state.activeAttempts.length > 3)
-              TextButton(
-                onPressed: () => context.push('/user-attempts'),
-                child: Text('View all ${state.activeAttempts.length} attempts'),
-              ),
-          ] else ...[
-            _buildNoActivityCard(context, theme),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildActiveAttemptCard(
-      BuildContext context, ThemeData theme, attempt) {
-    final isExam = attempt.mode == 'EXAM';
-    final timeElapsed = DateTime.now().difference(attempt.startedAt);
-
-    return Card(
-      child: InkWell(
-        onTap: () => context.push('/user-attempts'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isExam
-                      ? theme.colorScheme.tertiaryContainer
-                      : theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  isExam ? Icons.timer : Icons.psychology,
-                  size: 20,
-                  color: isExam
-                      ? theme.colorScheme.onTertiaryContainer
-                      : theme.colorScheme.onSecondaryContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${isExam ? 'Exam' : 'Practice'} in Progress',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Started ${_formatDuration(timeElapsed)} ago',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Color _getReadinessColor(ThemeData theme, String level) {
+    switch (level.toLowerCase()) {
+      case 'excellent':
+        return Colors.green;
+      case 'good':
+        return Colors.lightGreen;
+      case 'fair':
+        return Colors.orange;
+      case 'poor':
+        return Colors.redAccent;
+      default:
+        return theme.colorScheme.primary;
+    }
   }
 
-  Widget _buildNoActivityCard(BuildContext context, ThemeData theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(
-              Icons.auto_stories_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No recent activity',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Start practicing to see your progress here',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => context.go('/papers'),
-              child: const Text('Browse Papers'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorSliver(ThemeData theme, String error) {
-    return SliverFillRemaining(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: theme.colorScheme.error,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Something went wrong',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () {
-                  ref.read(homeControllerProvider.notifier).clearError();
-                  _loadDashboardData();
-                },
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _getReadinessLevelFromScore(double score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    return 'Poor';
   }
 
   String _getGreeting() {
@@ -745,26 +725,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return 'Good evening';
   }
 
-  Color _getReadinessColor(ThemeData theme, String level) {
-    switch (level.toLowerCase()) {
-      case 'excellent':
-        return Colors.green;
-      case 'good':
-        return Colors.blue;
-      case 'average':
-        return Colors.orange;
-      case 'below average':
-      case 'needs improvement':
-        return Colors.red;
-      default:
-        return theme.colorScheme.primary;
-    }
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d';
-    if (duration.inHours > 0) return '${duration.inHours}h';
-    if (duration.inMinutes > 0) return '${duration.inMinutes}m';
-    return 'now';
+  SliverFillRemaining _buildErrorSliver(ThemeData theme, String error) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline,
+                  size: 48, color: Colors.redAccent),
+              const SizedBox(height: 12),
+              Text(
+                'Something went wrong',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: Colors.redAccent),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _loadDashboardData,
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
