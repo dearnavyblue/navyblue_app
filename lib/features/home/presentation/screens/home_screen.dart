@@ -453,15 +453,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.black : Colors.grey[300],
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Text(
                         AppConfig.getSubjectDisplayName(subject),
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isSelected
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -475,7 +478,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // Selected Subject Content
           if (selectedProgress != null)
             Card(
-              color: Colors.grey[100], // Gray background
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -492,6 +494,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     _selectedSubject!),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
                                 ),
                               ),
                               const Spacer(),
@@ -519,7 +522,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           child: Text(
                             selectedProgress.readinessLevel,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.white,
+                              color: theme.colorScheme.onPrimary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -540,7 +543,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           selectedProgress.overallReadiness > 0
                               ? _getReadinessColor(
                                   theme, selectedProgress.readinessLevel)
-                              : Colors.grey[300]!,
+                              : theme.colorScheme.outline,
                         ),
                       ),
                     ),
@@ -588,6 +591,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     topic.topic,
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                   const Spacer(),
@@ -612,7 +616,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     topicAccuracy > 0
                                         ? _getReadinessColor(
                                             theme, topic.status)
-                                        : Colors.grey[300]!,
+                                        : theme.colorScheme.outline,
                                   ),
                                 ),
                               ),
