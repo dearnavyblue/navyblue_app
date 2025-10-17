@@ -640,11 +640,33 @@ class AdminController extends StateNotifier<AdminState> {
       for (int i = 0; i < questions.length; i++) {
         final question = questions[i] as Map<String, dynamic>;
 
+        // Context images
         final contextImages = question['contextImages'] as List? ?? [];
         if (contextImages.isEmpty) {
           paths.add('questions[$i].contextImages');
         }
 
+        // MCQ options at question level
+        final mcqOptions = question['mcqOptions'] as List? ?? [];
+        for (int optIdx = 0; optIdx < mcqOptions.length; optIdx++) {
+          final option = mcqOptions[optIdx] as Map<String, dynamic>;
+          final optionImages = option['optionImages'] as List? ?? [];
+          if (optionImages.isEmpty) {
+            paths.add('questions[$i].mcqOptions[$optIdx].optionImages');
+          }
+        }
+
+        // Direct solution steps (for questions without parts)
+        final directSteps = question['solutionSteps'] as List? ?? [];
+        for (int stepIdx = 0; stepIdx < directSteps.length; stepIdx++) {
+          final step = directSteps[stepIdx] as Map<String, dynamic>;
+          final solutionImages = step['solutionImages'] as List? ?? [];
+          if (solutionImages.isEmpty) {
+            paths.add('questions[$i].solutionSteps[$stepIdx].solutionImages');
+          }
+        }
+
+        // Parts
         final partsData = question['parts'];
         List<dynamic> parts = [];
 
@@ -657,11 +679,24 @@ class AdminController extends StateNotifier<AdminState> {
         for (int j = 0; j < parts.length; j++) {
           final part = parts[j] as Map<String, dynamic>;
 
+          // Part images
           final partImages = part['partImages'] as List? ?? [];
           if (partImages.isEmpty) {
             paths.add('questions[$i].parts[$j].partImages');
           }
 
+          // MCQ options at part level
+          final partMcqOptions = part['mcqOptions'] as List? ?? [];
+          for (int optIdx = 0; optIdx < partMcqOptions.length; optIdx++) {
+            final option = partMcqOptions[optIdx] as Map<String, dynamic>;
+            final optionImages = option['optionImages'] as List? ?? [];
+            if (optionImages.isEmpty) {
+              paths.add(
+                  'questions[$i].parts[$j].mcqOptions[$optIdx].optionImages');
+            }
+          }
+
+          // Solution steps
           final solutionStepsData = part['solutionSteps'];
           List<dynamic> solutionSteps = [];
 

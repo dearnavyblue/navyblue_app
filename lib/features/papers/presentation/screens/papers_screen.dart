@@ -1,3 +1,4 @@
+// lib/features/papers/presentation/screens/papers_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
@@ -6,6 +7,7 @@ import '../providers/papers_presentation_providers.dart';
 import '../widgets/paper_card.dart';
 import '../widgets/papers_filters.dart';
 import '../widgets/paper_search_bar.dart';
+import 'dart:async';
 
 class PapersScreen extends ConsumerStatefulWidget {
   const PapersScreen({super.key});
@@ -17,6 +19,8 @@ class PapersScreen extends ConsumerStatefulWidget {
 class _PapersScreenState extends ConsumerState<PapersScreen> {
   late ScrollController _scrollController;
   bool _isInitializing = true;
+  DateTime? _lastRefreshTime;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -27,21 +31,45 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() => _isInitializing = true);
 
-      // Load user attempts first, then papers
-      ref
-          .read(userAttemptsControllerProvider.notifier)
-          .loadUserAttempts()
-          .then((_) {
-        ref.read(papersControllerProvider.notifier).loadFilterOptions();
-        ref.read(papersControllerProvider.notifier).loadPapers(refresh: true);
-
-        setState(() => _isInitializing = false);
+      // OPTIMIZATION: Load in parallel instead of sequentially
+      Future.wait([
+        ref.read(userAttemptsControllerProvider.notifier).loadUserAttempts(),
+        ref.read(papersControllerProvider.notifier).loadFilterOptions(),
+      ]).then((_) {
+        return ref
+            .read(papersControllerProvider.notifier)
+            .loadPapers(refresh: true);
+      }).then((_) {
+        if (mounted) {
+          setState(() {
+            _isInitializing = false;
+            _lastRefreshTime = DateTime.now();
+          });
+        }
       });
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isInitializing && mounted) {
+        // OPTIMIZATION: Only refresh if enough time has passed
+        final now = DateTime.now();
+        if (_lastRefreshTime == null ||
+            now.difference(_lastRefreshTime!) > const Duration(seconds: 30)) {
+          ref.read(userAttemptsControllerProvider.notifier).refreshAttempts();
+          _lastRefreshTime = now;
+        }
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _debounceTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -66,18 +94,29 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     if (_isInitializing) {
       return Scaffold(
         appBar: AppBar(title: const Text('Exam Papers')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: _buildSkeletonLoader(theme, isTablet),
       );
     }
 
-    // Listen for changes in user attempts and refresh papers
+    // OPTIMIZATION: Debounced listener for user attempts changes
     ref.listen(userAttemptsControllerProvider, (previous, next) {
-      if (previous != null &&
-          previous.userAttempts.length != next.userAttempts.length) {
-        // User attempts have changed, refresh papers
-        print(
-            'User attempts changed from ${previous.userAttempts.length} to ${next.userAttempts.length}');
-        ref.read(papersControllerProvider.notifier).onUserAttemptsChanged();
+      final attemptsChanged = previous != null &&
+          previous.userAttempts.length != next.userAttempts.length;
+
+      final wasLoading = previous?.isLoadingUserAttempts ?? false;
+      final nowLoaded = !next.isLoadingUserAttempts && next.isInitialized;
+
+      if (attemptsChanged || (wasLoading && nowLoaded)) {
+        // Cancel existing timer
+        _debounceTimer?.cancel();
+
+        // Debounce refresh by 500ms
+        _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            print('REFRESHING PAPERS - Attempts changed or just loaded');
+            ref.read(papersControllerProvider.notifier).onUserAttemptsChanged();
+          }
+        });
       }
     });
 
@@ -98,9 +137,16 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref
-                .read(papersControllerProvider.notifier)
-                .loadPapers(refresh: true),
+            onPressed: () {
+              _lastRefreshTime = DateTime.now();
+              // OPTIMIZATION: Refresh both attempts and papers
+              ref
+                  .read(userAttemptsControllerProvider.notifier)
+                  .refreshAttempts();
+              ref
+                  .read(papersControllerProvider.notifier)
+                  .loadPapers(refresh: true);
+            },
             tooltip: 'Refresh',
           ),
         ],
@@ -185,30 +231,20 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
           // Papers List
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () => ref
-                  .read(papersControllerProvider.notifier)
-                  .loadPapers(refresh: true),
+              onRefresh: () async {
+                _lastRefreshTime = DateTime.now();
+                // Refresh both attempts and papers
+                await ref
+                    .read(userAttemptsControllerProvider.notifier)
+                    .refreshAttempts();
+                await ref
+                    .read(papersControllerProvider.notifier)
+                    .loadPapers(refresh: true);
+              },
               child: state.isLoading && state.paperAvailabilities.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Loading papers...',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? _buildSkeletonLoader(theme, isTablet)
                   : state.paperAvailabilities.isEmpty
-                      ? _buildEmptyState(theme)
+                      ? _buildEmptyState(theme, state)
                       : _buildPapersList(state, theme, isTablet),
             ),
           ),
@@ -217,7 +253,97 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     );
   }
 
-  // Updated helper method with messaging about attempted papers:
+  // OPTIMIZATION: Skeleton loader for better perceived performance
+  Widget _buildSkeletonLoader(ThemeData theme, bool isTablet) {
+    return ListView.builder(
+      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Card(
+            child: Container(
+              height: 140,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 60,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 200,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 60,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   String _getPapersPaginationText(PapersState state) {
     const pageSize = 10;
     final totalAvailable = state.totalAvailablePapers;
@@ -227,7 +353,6 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     final displayedCount = state.paperAvailabilities.length;
 
     if (totalAvailable == 0 && attemptedCount > 0) {
-      // All papers have been attempted
       return state.isOffline
           ? '$attemptedCount papers attempted - check online for more'
           : '$attemptedCount papers attempted - more coming soon';
@@ -235,21 +360,17 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
 
     if (state.activeFilters.isNotEmpty ||
         (state.searchQuery?.isNotEmpty ?? false)) {
-      // When filters are active
       if (attemptedCount > 0) {
         return '$displayedCount available, $attemptedCount attempted (filtered)';
       }
       return 'Showing $displayedCount available papers (filtered)';
     } else {
-      // When no filters, show page range
       if (totalAvailable <= pageSize) {
-        // Single page
         if (attemptedCount > 0) {
           return '$displayedCount available, $attemptedCount already attempted';
         }
         return 'Showing $displayedCount available papers';
       } else {
-        // Multiple pages - show range
         final startIndex = (state.currentPage - 1) * pageSize + 1;
         final actualEndIndex =
             (startIndex + displayedCount - 1).clamp(startIndex, totalAvailable);
@@ -262,9 +383,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     }
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
-    final state = ref.watch(papersControllerProvider);
-
+  Widget _buildEmptyState(ThemeData theme, PapersState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
@@ -313,6 +432,9 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
               FilledButton.icon(
                 onPressed: () {
                   ref.read(papersControllerProvider.notifier).clearError();
+                  ref
+                      .read(userAttemptsControllerProvider.notifier)
+                      .refreshAttempts();
                   ref
                       .read(papersControllerProvider.notifier)
                       .loadPapers(refresh: true);
@@ -380,8 +502,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
         final paperAvailability = state.paperAvailabilities[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: PaperCard(
-              paperAvailability: paperAvailability), // Updated parameter
+          child: PaperCard(paperAvailability: paperAvailability),
         );
       },
     );

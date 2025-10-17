@@ -9,6 +9,8 @@ class User extends OfflineFirstWithRestModel {
   @Rest(name: 'id')
   final String id;
 
+  // OPTIMIZATION: Index email for login/auth queries
+  @Sqlite(index: true)
   @Rest(name: 'email')
   final String email;
 
@@ -18,6 +20,8 @@ class User extends OfflineFirstWithRestModel {
   @Rest(name: 'lastName')
   final String lastName;
 
+  // OPTIMIZATION: Index grade for filtering by grade
+  @Sqlite(index: true)
   @Rest(name: 'grade')
   final String grade;
 
@@ -30,6 +34,8 @@ class User extends OfflineFirstWithRestModel {
   @Rest(name: 'schoolName')
   final String? schoolName;
 
+  // OPTIMIZATION: Index role for filtering by user role
+  @Sqlite(index: true)
   @Rest(name: 'role')
   final String role;
 
@@ -57,11 +63,11 @@ class User extends OfflineFirstWithRestModel {
   final DateTime? lastLoginAt;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -145,7 +151,6 @@ class User extends OfflineFirstWithRestModel {
       role: role,
       isEmailVerified: isEmailVerified,
       createdAt: createdAt,
-      // Explicitly set tokens to null
       accessToken: null,
       refreshToken: null,
       tokenExpiresAt: null,
@@ -196,12 +201,9 @@ class User extends OfflineFirstWithRestModel {
   String get fullName => '$firstName $lastName';
   bool get isAdmin => role == 'ADMIN';
   bool get isTokenValid {
-    // If we don't have both access token and expiry, we're not valid
     if (accessToken == null || tokenExpiresAt == null) {
       return false;
     }
-
-    // Check if token hasn't expired
     return DateTime.now().isBefore(tokenExpiresAt!);
   }
 

@@ -1,3 +1,4 @@
+// lib/features/attempts/presentation/controllers/attempts_controller.dart
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,53 +106,86 @@ class AttemptsState {
     bool? isLoadingMoreAttempts,
     int? totalAttemptsCount,
   }) {
-    try {
-      final newState = AttemptsState(
-        currentAttempt: currentAttempt ?? this.currentAttempt,
-        paper: paper ?? this.paper,
-        allPagesQuestions: allPagesQuestions ?? this.allPagesQuestions,
-        progress: progress ?? this.progress,
-        isLoading: isLoading ?? this.isLoading,
-        isMarkingStep: isMarkingStep ?? this.isMarkingStep,
-        error: error,
-        currentPage: currentPage ?? this.currentPage,
-        totalPages: totalPages ?? this.totalPages,
-        showHints: showHints ?? this.showHints,
-        currentTab: currentTab ?? this.currentTab,
-        memoEnabled: memoEnabled ?? this.memoEnabled,
-        expandedSolutions: expandedSolutions ?? this.expandedSolutions,
-        stepStatuses: stepStatuses ?? this.stepStatuses,
-        isOffline: isOffline ?? this.isOffline,
-        timerStartedAt: timerStartedAt ?? this.timerStartedAt,
-        remainingSeconds: remainingSeconds ?? this.remainingSeconds,
-        isTimerPaused: isTimerPaused ?? this.isTimerPaused,
-        userAttempts: userAttempts ?? this.userAttempts,
-        papersCache: papersCache ?? this.papersCache,
-        isLoadingUserAttempts:
-            isLoadingUserAttempts ?? this.isLoadingUserAttempts,
-        userAttemptsError: userAttemptsError,
-        isInitialized: isInitialized ?? this.isInitialized,
-        currentAttemptsPage: currentAttemptsPage ?? this.currentAttemptsPage,
-        totalAttemptsPages: totalAttemptsPages ?? this.totalAttemptsPages,
-        hasNextAttemptsPage: hasNextAttemptsPage ?? this.hasNextAttemptsPage,
-        isLoadingMoreAttempts:
-            isLoadingMoreAttempts ?? this.isLoadingMoreAttempts,
-        totalAttemptsCount: totalAttemptsCount ?? this.totalAttemptsCount,
-      );
-
-      return newState;
-    } catch (e) {
-      rethrow;
-    }
+    return AttemptsState(
+      currentAttempt: currentAttempt ?? this.currentAttempt,
+      paper: paper ?? this.paper,
+      allPagesQuestions: allPagesQuestions ?? this.allPagesQuestions,
+      progress: progress ?? this.progress,
+      isLoading: isLoading ?? this.isLoading,
+      isMarkingStep: isMarkingStep ?? this.isMarkingStep,
+      error: error,
+      currentPage: currentPage ?? this.currentPage,
+      totalPages: totalPages ?? this.totalPages,
+      showHints: showHints ?? this.showHints,
+      currentTab: currentTab ?? this.currentTab,
+      memoEnabled: memoEnabled ?? this.memoEnabled,
+      expandedSolutions: expandedSolutions ?? this.expandedSolutions,
+      stepStatuses: stepStatuses ?? this.stepStatuses,
+      isOffline: isOffline ?? this.isOffline,
+      timerStartedAt: timerStartedAt ?? this.timerStartedAt,
+      remainingSeconds: remainingSeconds ?? this.remainingSeconds,
+      isTimerPaused: isTimerPaused ?? this.isTimerPaused,
+      userAttempts: userAttempts ?? this.userAttempts,
+      papersCache: papersCache ?? this.papersCache,
+      isLoadingUserAttempts:
+          isLoadingUserAttempts ?? this.isLoadingUserAttempts,
+      userAttemptsError: userAttemptsError,
+      isInitialized: isInitialized ?? this.isInitialized,
+      currentAttemptsPage: currentAttemptsPage ?? this.currentAttemptsPage,
+      totalAttemptsPages: totalAttemptsPages ?? this.totalAttemptsPages,
+      hasNextAttemptsPage: hasNextAttemptsPage ?? this.hasNextAttemptsPage,
+      isLoadingMoreAttempts:
+          isLoadingMoreAttempts ?? this.isLoadingMoreAttempts,
+      totalAttemptsCount: totalAttemptsCount ?? this.totalAttemptsCount,
+    );
   }
 
   bool get isExamMode => currentAttempt?.mode == 'EXAM';
   bool get isPracticeMode => currentAttempt?.mode == 'PRACTICE';
   bool get canShowHints => isPracticeMode && showHints;
-  List<Question> get currentPageQuestions =>
-      allPagesQuestions[currentPage] ?? [];
-  bool get canGoToPreviousPage => currentPage > 1;
-  bool get canGoToNextPage => currentPage < totalPages;
+
+  List<Question> get currentPageQuestions {
+    if (currentPage == 1) return [];
+    return allPagesQuestions[currentPage] ?? [];
+  }
+
+  bool get isOnInstructionsPage => currentPage == 1;
+
+  String get pageDisplayText {
+    if (allDisplayPages.isEmpty) return 'Page 1 of 1';
+    final currentDisplayIndex = allDisplayPages.indexOf(currentPage);
+    if (currentDisplayIndex == -1) return 'Page 1 of $displayTotalPages';
+    if (currentPage == 1) {
+      return 'Instructions';
+    } else {
+      return 'Page $currentPage of $totalPages';
+    }
+  }
+
+  bool get canGoToPreviousPage {
+    if (allDisplayPages.isEmpty) return false;
+    final currentIndex = allDisplayPages.indexOf(currentPage);
+    return currentIndex > 0;
+  }
+
+  bool get canGoToNextPage {
+    if (allDisplayPages.isEmpty) return false;
+    final currentIndex = allDisplayPages.indexOf(currentPage);
+    return currentIndex >= 0 && currentIndex < allDisplayPages.length - 1;
+  }
+
+  int? get previousPage {
+    if (!canGoToPreviousPage) return null;
+    final currentIndex = allDisplayPages.indexOf(currentPage);
+    return allDisplayPages[currentIndex - 1];
+  }
+
+  int? get nextPage {
+    if (!canGoToNextPage) return null;
+    final currentIndex = allDisplayPages.indexOf(currentPage);
+    return allDisplayPages[currentIndex + 1];
+  }
+
   bool get isTimerRunning =>
       timerStartedAt != null &&
       remainingSeconds != null &&
@@ -162,6 +196,15 @@ class AttemptsState {
 
   String getStepStatus(String stepId) =>
       stepStatuses[stepId] ?? 'NOT_ATTEMPTED';
+
+  List<int> get availableServerPages => allPagesQuestions.keys
+      .where((page) => allPagesQuestions[page]?.isNotEmpty == true)
+      .toList()
+    ..sort();
+
+  List<int> get allDisplayPages => [1, ...availableServerPages];
+
+  int get displayTotalPages => allDisplayPages.length;
 }
 
 class AttemptsController extends StateNotifier<AttemptsState> {
@@ -172,12 +215,13 @@ class AttemptsController extends StateNotifier<AttemptsState> {
 
   AttemptsController(this._ref, this._paperId) : super(const AttemptsState());
 
-  // User Attempts Management - Following Papers Pattern
+  // OPTIMIZATION: User Attempts Management
   Future<void> loadUserAttempts({int page = 1, bool refresh = false}) async {
     if (!_connectivityListenerSetup) {
       _setupConnectivityListener();
       _connectivityListenerSetup = true;
     }
+
     if (refresh) {
       state = state.copyWith(
         isLoadingUserAttempts: true,
@@ -205,13 +249,8 @@ class AttemptsController extends StateNotifier<AttemptsState> {
   void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        // Check if we're transitioning from offline to online BEFORE updating state
         final wasOffline = state.isOffline;
-
-        // Always sync state with connectivity
         state = state.copyWith(isOffline: !isOnline);
-
-        // Sync when coming back online (transitioning from offline to online)
         if (isOnline && wasOffline) {
           syncWhenOnline();
         }
@@ -221,15 +260,19 @@ class AttemptsController extends StateNotifier<AttemptsState> {
 
   Future<void> _loadUserAttemptsFromLocal(int page, bool refresh) async {
     try {
-      final localAttempts = await _repository.get<StudentAttempt>();
+      // OPTIMIZATION: Load attempts and papers in parallel
+      final results = await Future.wait([
+        _repository.get<StudentAttempt>(),
+        _repository.get<ExamPaper>(),
+      ]);
+
+      final localAttempts = results[0] as List<StudentAttempt>;
+      final allPapers = results[1] as List<ExamPaper>;
+
       localAttempts.sort((a, b) => b.startedAt.compareTo(a.startedAt));
 
-      final papersCache = <String, ExamPaper>{};
-      final allPapers = await _repository.get<ExamPaper>();
-
-      for (final paper in allPapers) {
-        papersCache[paper.id] = paper;
-      }
+      // OPTIMIZATION: Build papers cache efficiently
+      final papersCache = {for (var paper in allPapers) paper.id: paper};
 
       const pageSize = 20;
       final startIndex = (page - 1) * pageSize;
@@ -252,8 +295,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         isLoadingMoreAttempts: false,
         isInitialized: true,
       );
-
-      print('Loaded ${combinedAttempts.length} attempts from local database');
     } catch (e) {
       state = state.copyWith(
         isLoadingUserAttempts: false,
@@ -264,7 +305,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
   }
 
   Future<void> _syncUserAttemptsWithServer(int page, bool refresh) async {
-    // Check connectivity first
     if (state.isOffline) return;
 
     try {
@@ -286,33 +326,37 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       if (result.isSuccess) {
         final response = result.data!;
 
-        for (final attempt in response.attempts) {
-          await _repository.upsert<StudentAttempt>(attempt);
-        }
+        // OPTIMIZATION: Save attempts in parallel
+        await Future.wait(response.attempts
+            .map((a) => _repository.upsert<StudentAttempt>(a)));
 
         final updatedPapersCache = {...state.papersCache, ...response.papers};
 
-        final Map<String, StudentAttempt> attemptMap = {};
+        List<StudentAttempt> finalAttempts;
 
         if (refresh) {
-          for (final attempt in response.attempts) {
-            attemptMap[attempt.id] = attempt;
-          }
+          finalAttempts = response.attempts;
         } else {
-          for (final attempt in state.userAttempts) {
+          // OPTIMIZATION: Use map for O(1) lookups
+          final attemptMap = {for (var a in state.userAttempts) a.id: a};
+          for (var attempt in response.attempts) {
             attemptMap[attempt.id] = attempt;
           }
-          for (final attempt in response.attempts) {
-            attemptMap[attempt.id] = attempt;
-          }
+
+          await _repository.get<StudentAttempt>();
+          final serverAttemptIds = {for (var a in response.attempts) a.id};
+
+          attemptMap.removeWhere((id, attempt) =>
+              !serverAttemptIds.contains(id) && !attempt.needsSync);
+
+          finalAttempts = attemptMap.values.toList();
         }
 
-        final combinedAttempts = attemptMap.values.toList()
-          ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+        finalAttempts.sort((a, b) => b.startedAt.compareTo(a.startedAt));
 
-        final finalAttempts = combinedAttempts.length > response.totalCount
-            ? combinedAttempts.take(response.totalCount).toList()
-            : combinedAttempts;
+        if (finalAttempts.length > response.totalCount) {
+          finalAttempts = finalAttempts.take(response.totalCount).toList();
+        }
 
         state = state.copyWith(
           userAttempts: finalAttempts,
@@ -349,27 +393,29 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       List<StudentAttempt> serverAttempts) async {
     try {
       final localAttempts = await _repository.get<StudentAttempt>();
-      final serverAttemptIds = serverAttempts.map((a) => a.id).toSet();
+      final serverAttemptIds = {for (var a in serverAttempts) a.id};
 
       final attemptsToDelete = localAttempts
           .where((local) =>
               !serverAttemptIds.contains(local.id) && !local.needsSync)
           .toList();
 
-      for (final attempt in attemptsToDelete) {
-        await _repository.delete<StudentAttempt>(attempt);
+      // OPTIMIZATION: Delete in parallel
+      if (attemptsToDelete.isNotEmpty) {
+        await Future.wait(attemptsToDelete.map((attempt) async {
+          await _repository.delete<StudentAttempt>(attempt);
 
-        final stepAttempts = await _repository.get<StepAttempt>();
-        final associatedSteps = stepAttempts
-            .where((step) => step.studentAttemptId == attempt.id)
-            .toList();
+          final stepAttempts = await _repository.get<StepAttempt>();
+          final associatedSteps = stepAttempts
+              .where((step) => step.studentAttemptId == attempt.id)
+              .toList();
 
-        for (final step in associatedSteps) {
-          await _repository.delete<StepAttempt>(step);
-        }
+          await Future.wait(associatedSteps
+              .map((step) => _repository.delete<StepAttempt>(step)));
+        }));
       }
     } catch (e) {
-      print('Failed to sync attempt deletions: $e');
+      // Silent fail
     }
   }
 
@@ -377,20 +423,16 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       List<StudentAttempt> attempts, Map<String, ExamPaper> papers) async {
     try {
       final localAttempts = await _repository.get<StudentAttempt>();
-      final merged = <String, StudentAttempt>{};
+      final merged = {for (var local in localAttempts) local.id: local};
 
-      for (final local in localAttempts) {
-        merged[local.id] = local;
-      }
-
-      for (final server in attempts) {
-        merged[server.id] = server;
-        await _repository.upsert<StudentAttempt>(server);
-      }
-
-      for (final paper in papers.values) {
-        await _repository.upsert<ExamPaper>(paper);
-      }
+      // OPTIMIZATION: Save in parallel
+      await Future.wait([
+        ...attempts.map((a) {
+          merged[a.id] = a;
+          return _repository.upsert<StudentAttempt>(a);
+        }),
+        ...papers.values.map((p) => _repository.upsert<ExamPaper>(p)),
+      ]);
 
       final sortedAttempts = merged.values.toList()
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
@@ -402,7 +444,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
 
       await _syncPendingChangesToServer();
     } catch (e) {
-      // Background processing failed - UI already shows server data
+      // Background fail - UI shows server data
     }
   }
 
@@ -454,11 +496,11 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         }
       }
     } catch (e) {
-      // Sync will retry next time
+      // Retry later
     }
   }
 
-  // Attempt Management - Offline First Pattern
+  // Attempt Management
   Future<void> startAttempt(
     AttemptConfig config, {
     String? resumeAttemptId,
@@ -491,10 +533,30 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     await _checkAndHandleExistingAttempts(config);
 
     try {
-      await _loadCompleteAttemptDataOfflineFirst(null, config);
-      _syncCreateAttemptWithServer(config);
+      final now = DateTime.now();
+      final localAttempt = StudentAttempt(
+        id: const Uuid().v4(),
+        paperId: _paperId!,
+        mode: config.mode,
+        enableHints: config.enableHints,
+        startedAt: now,
+        timerStartedAt: config.isExamMode ? now : null,
+        needsSync: true,
+      );
+
+      await _repository.upsert<StudentAttempt>(localAttempt);
+
+      final updatedUserAttempts = [localAttempt, ...state.userAttempts];
+      state = state.copyWith(userAttempts: updatedUserAttempts);
+
+      await _loadCompleteAttemptDataOfflineFirst(localAttempt, config);
+
+      unawaited(_syncCreateAttemptWithServer(config, localAttempt.id));
     } catch (e) {
-      await _createOfflineAttempt(config);
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Failed to create attempt: ${e.toString()}',
+      );
     }
   }
 
@@ -530,7 +592,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
   }
 
   Future<void> _loadCompleteAttemptDataOfflineFirst(
-      StudentAttempt? attempt, AttemptConfig config) async {
+      StudentAttempt attempt, AttemptConfig config) async {
     await _loadPaperMetadata();
 
     if (state.paper == null) {
@@ -542,20 +604,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     }
 
     await _preloadAllPages();
-
-    if (attempt == null) {
-      final now = DateTime.now();
-      attempt = StudentAttempt(
-        id: const Uuid().v4(),
-        paperId: _paperId!,
-        mode: config.mode,
-        enableHints: config.enableHints,
-        startedAt: now,
-        timerStartedAt: config.isExamMode ? now : null,
-        needsSync: true,
-      );
-      await _repository.upsert<StudentAttempt>(attempt);
-    }
+    await _repository.upsert<StudentAttempt>(attempt);
 
     final memoEnabled = config.isPracticeMode || attempt.isCompleted;
 
@@ -588,7 +637,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     await loadProgressOfflineFirst();
   }
 
-  // Paper and Questions Loading - Offline First
   Future<void> _loadPaperMetadata() async {
     if (_paperId == null) return;
 
@@ -596,9 +644,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       await _loadPaperFromLocal();
       _syncPaperWithServer();
     } catch (e) {
-      state = state.copyWith(
-        error: 'Failed to load paper: $e',
-      );
+      state = state.copyWith(error: 'Failed to load paper: $e');
     }
   }
 
@@ -609,16 +655,10 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       );
 
       if (localPapers.isNotEmpty) {
-        final localPaper = localPapers.first;
-        state = state.copyWith(
-          paper: localPaper,
-        );
-        print('Loaded paper from local database: ${localPaper.title}');
-      } else {
-        print('No local paper found with id $_paperId');
+        state = state.copyWith(paper: localPapers.first);
       }
     } catch (e) {
-      print('Error loading paper from local: $e');
+      // Silent fail
     }
   }
 
@@ -630,20 +670,10 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       if (result.isSuccess) {
         final serverPaper = result.data!;
         await _repository.upsert<ExamPaper>(serverPaper);
-
-        state = state.copyWith(
-          paper: serverPaper,
-          isOffline: false,
-        );
-
-        print('Synced paper with server: ${serverPaper.title}');
-      } else {
-        print('Failed to sync paper with server: ${result.error}');
-        state = state.copyWith();
+        state = state.copyWith(paper: serverPaper, isOffline: false);
       }
     } catch (e) {
-      print('Error syncing paper with server: $e');
-      state = state.copyWith();
+      // Silent fail
     }
   }
 
@@ -671,48 +701,49 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       );
 
       if (localQuestions.isNotEmpty) {
-        print('Loaded ${localQuestions.length} questions from local database');
-
+        // OPTIMIZATION: Build questions map in single pass
         final questionsByPage = <int, List<Question>>{};
-        int maxPage = 1;
+        var maxPage = 1;
 
         for (final question in localQuestions) {
           final pageNumber = question.pageNumber;
-          questionsByPage[pageNumber] ??= [];
-          questionsByPage[pageNumber]!.add(question);
+          (questionsByPage[pageNumber] ??= []).add(question);
           maxPage = max(maxPage, pageNumber);
         }
 
-        // Sort questions within each page by orderIndex
+        // OPTIMIZATION: Sort all pages at once
         for (final pageQuestions in questionsByPage.values) {
           pageQuestions.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
         }
+
+        questionsByPage.removeWhere((page, questions) => questions.isEmpty);
 
         state = state.copyWith(
           allPagesQuestions: questionsByPage,
           totalPages: maxPage,
         );
 
-        print('Organized questions into $maxPage pages offline');
+        _setInitialPage(state.currentPage, maxPage);
         return;
       }
 
-      print('No local questions found for paper $_paperId');
       state = state.copyWith(
         allPagesQuestions: {},
         totalPages: 1,
+        currentPage: 1,
       );
     } catch (e) {
-      print('Error loading questions from local: $e');
       state = state.copyWith(
         allPagesQuestions: {},
         totalPages: 1,
+        currentPage: 1,
       );
     }
   }
 
   Future<void> _syncQuestionsWithServer() async {
     if (state.isOffline) return;
+
     try {
       final getPaperPageUseCase = _ref.read(getPaperPageUseCaseProvider);
 
@@ -722,45 +753,76 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       if (firstPageResult.isSuccess) {
         final pageData = firstPageResult.data!;
         final totalPages = pageData['totalPages'] as int;
-        final allPages = <int, List<Question>>{};
+        final firstPageQuestions = pageData['questions'] as List<Question>;
 
-        allPages[1] = pageData['questions'] as List<Question>;
-
-        for (final question in allPages[1]!) {
-          await _repository.upsert<Question>(question);
-        }
-
-        for (int page = 2; page <= totalPages; page++) {
-          final pageResult = await getPaperPageUseCase(_paperId!, page,
-              includeSolutions: true);
-          if (pageResult.isSuccess) {
-            final pageData = pageResult.data!;
-            allPages[page] = pageData['questions'] as List<Question>;
-
-            for (final question in allPages[page]!) {
-              await _repository.upsert<Question>(question);
-            }
-          }
+        final updatedPages =
+            Map<int, List<Question>>.from(state.allPagesQuestions);
+        if (firstPageQuestions.isNotEmpty) {
+          updatedPages[1] = firstPageQuestions;
         }
 
         state = state.copyWith(
-          allPagesQuestions: allPages,
+          allPagesQuestions: updatedPages,
           totalPages: totalPages,
           isOffline: false,
         );
 
-        print('Loaded and cached ${allPages.length} pages from server');
-      } else {
-        print('Failed to sync questions with server: ${firstPageResult.error}');
-        state = state.copyWith();
+        // OPTIMIZATION: Save first page questions in parallel
+        await Future.wait(
+            firstPageQuestions.map((q) => _repository.upsert<Question>(q)));
+
+        _setInitialPage(1, totalPages);
+        _loadRemainingPagesInBackground(totalPages);
       }
     } catch (e) {
-      print('Error syncing questions with server: $e');
-      state = state.copyWith();
+      state = state.copyWith(isOffline: true);
     }
   }
 
-  // Step Status Management - Offline First
+  Future<void> _loadRemainingPagesInBackground(int totalPages) async {
+    final getPaperPageUseCase = _ref.read(getPaperPageUseCaseProvider);
+
+    // OPTIMIZATION: Load pages in parallel (batches of 3)
+    const batchSize = 3;
+    for (int i = 2; i <= totalPages; i += batchSize) {
+      final futures = <Future<void>>[];
+      final endIndex = min(i + batchSize, totalPages + 1);
+
+      for (int page = i; page < endIndex; page++) {
+        futures.add(_loadSinglePage(page, getPaperPageUseCase));
+      }
+
+      await Future.wait(futures);
+    }
+  }
+
+  Future<void> _loadSinglePage(
+      int pageNumber, dynamic getPaperPageUseCase) async {
+    try {
+      final pageResult = await getPaperPageUseCase(_paperId!, pageNumber,
+          includeSolutions: true);
+
+      if (pageResult.isSuccess) {
+        final pageData = pageResult.data!;
+        final questions = pageData['questions'] as List<Question>;
+
+        if (questions.isNotEmpty) {
+          final updatedPages =
+              Map<int, List<Question>>.from(state.allPagesQuestions);
+          updatedPages[pageNumber] = questions;
+
+          state = state.copyWith(allPagesQuestions: updatedPages);
+
+          // OPTIMIZATION: Save questions in parallel
+          await Future.wait(
+              questions.map((q) => _repository.upsert<Question>(q)));
+        }
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
   Future<void> _loadExistingStepStatusesOfflineFirst(String attemptId) async {
     try {
       final localAttempts = await _repository.get<StudentAttempt>(
@@ -776,10 +838,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       }
 
       state = state.copyWith(stepStatuses: stepStatuses);
-
-      print('Loaded ${stepStatuses.length} step statuses from local database');
     } catch (e) {
-      print('Error loading step statuses offline: $e');
       state = state.copyWith(stepStatuses: <String, String>{});
     }
   }
@@ -814,6 +873,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         status: status,
         needsSync: true,
       );
+
       await _repository.upsert<StepAttempt>(stepAttempt);
     } catch (e) {
       state = state.copyWith(
@@ -849,16 +909,13 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       final syncedStep = stepAttempt.copyWith(needsSync: false);
       await _repository.upsert<StepAttempt>(syncedStep);
     } catch (e) {
-      state = state.copyWith();
+      // Silent fail
     }
   }
 
-  // Progress Management - Offline First
   Future<void> loadProgressOfflineFirst() async {
     if (state.currentAttempt == null) return;
-
     _calculateLocalProgress();
-
     if (!state.isOffline) {
       _syncProgressWithServer();
     }
@@ -872,56 +929,86 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       final result = await getProgressUseCase(state.currentAttempt!.id);
 
       if (result.isSuccess) {
-        state = state.copyWith(
-          progress: result.data,
-          isOffline: false,
-        );
-        print('Successfully synced progress with server');
-      } else {
-        print('Failed to sync progress: ${result.error}');
+        state = state.copyWith(progress: result.data, isOffline: false);
       }
     } catch (e) {
-      print('Error syncing progress: $e');
+      // Silent fail
     }
   }
 
+  // OPTIMIZATION: Improved progress calculation
   void _calculateLocalProgress() {
-    int totalSteps = 0;
-    int markedSteps = 0;
-    int correctSteps = 0;
-    int totalMarks = 0;
-    int earnedMarks = 0;
+    var totalSteps = 0;
+    var markedSteps = 0;
+    var correctSteps = 0;
+    var totalMarks = 0;
+    var earnedMarks = 0;
 
     for (final questions in state.allPagesQuestions.values) {
       for (final question in questions) {
-        // Handle multi-part questions
-        for (final part in question.parts) {
-          for (final step in part.solutionSteps) {
+        if (question.mcqOptions != null) {
+          // MCQ question with direct solution steps
+          for (final step in question.solutionSteps) {
             totalSteps++;
-            totalMarks += step.marksForThisStep ?? 0; // Handle null
+            totalMarks += step.marksForThisStep ?? 0;
 
             final status = state.stepStatuses[step.id];
             if (status != null && status != 'NOT_ATTEMPTED') {
               markedSteps++;
               if (status == 'CORRECT') {
                 correctSteps++;
-                earnedMarks += step.marksForThisStep ?? 0; // Handle null
+                earnedMarks += step.marksForThisStep ?? 0;
               }
             }
           }
-        }
+        } else if (question.parts.isNotEmpty) {
+          // Multi-part question
+          for (final part in question.parts) {
+            if (part.mcqOptions != null) {
+              // MCQ part
+              for (final step in part.solutionSteps) {
+                totalSteps++;
+                totalMarks += step.marksForThisStep ?? 0;
 
-        // Handle simple questions with direct solution steps
-        for (final step in question.solutionSteps) {
-          totalSteps++;
-          totalMarks += step.marksForThisStep ?? 0; // Handle null
+                final status = state.stepStatuses[step.id];
+                if (status != null && status != 'NOT_ATTEMPTED') {
+                  markedSteps++;
+                  if (status == 'CORRECT') {
+                    correctSteps++;
+                    earnedMarks += step.marksForThisStep ?? 0;
+                  }
+                }
+              }
+            } else {
+              // Regular part
+              for (final step in part.solutionSteps) {
+                totalSteps++;
+                totalMarks += step.marksForThisStep ?? 0;
 
-          final status = state.stepStatuses[step.id];
-          if (status != null && status != 'NOT_ATTEMPTED') {
-            markedSteps++;
-            if (status == 'CORRECT') {
-              correctSteps++;
-              earnedMarks += step.marksForThisStep ?? 0; // Handle null
+                final status = state.stepStatuses[step.id];
+                if (status != null && status != 'NOT_ATTEMPTED') {
+                  markedSteps++;
+                  if (status == 'CORRECT') {
+                    correctSteps++;
+                    earnedMarks += step.marksForThisStep ?? 0;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Simple question with direct solution steps
+          for (final step in question.solutionSteps) {
+            totalSteps++;
+            totalMarks += step.marksForThisStep ?? 0;
+
+            final status = state.stepStatuses[step.id];
+            if (status != null && status != 'NOT_ATTEMPTED') {
+              markedSteps++;
+              if (status == 'CORRECT') {
+                correctSteps++;
+                earnedMarks += step.marksForThisStep ?? 0;
+              }
             }
           }
         }
@@ -939,138 +1026,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     );
 
     state = state.copyWith(progress: progress);
-  }
-
-  // Background Server Sync Methods
-  Future<void> _syncCreateAttemptWithServer(AttemptConfig config) async {
-    try {
-      final createAttemptUseCase = _ref.read(createAttemptUseCaseProvider);
-      final result = await createAttemptUseCase(config);
-
-      if (result.isSuccess) {
-        final serverAttempt = result.data!.attempt;
-
-        final updatedAttempt = state.currentAttempt!.copyWith(
-          id: serverAttempt.id,
-          needsSync: false,
-        );
-
-        await _repository.upsert<StudentAttempt>(updatedAttempt);
-
-        state = state.copyWith(
-          currentAttempt: updatedAttempt,
-          isOffline: false,
-        );
-
-        print('Successfully synced new attempt with server');
-      } else {
-        print('Failed to sync attempt with server: ${result.error}');
-        state = state.copyWith();
-      }
-    } catch (e) {
-      print('Error syncing attempt with server: $e');
-      state = state.copyWith();
-    }
-  }
-
-  Future<void> _syncResumeAttemptWithServer(String attemptId) async {
-    try {
-      final getAttemptUseCase = _ref.read(getAttemptUseCaseProvider);
-      final result = await getAttemptUseCase(attemptId);
-
-      if (result.isSuccess) {
-        final serverAttempt = result.data!;
-
-        final mergedStepStatuses = {
-          ...state.stepStatuses,
-          if (serverAttempt.stepStatuses != null)
-            ...Map<String, String>.from(serverAttempt.stepStatuses!),
-        };
-
-        final updatedAttempt = serverAttempt.copyWith(
-          stepStatuses: mergedStepStatuses,
-          timerStartedAt: state.currentAttempt?.timerStartedAt ??
-              serverAttempt.timerStartedAt,
-          lastActivityAt: state.currentAttempt?.lastActivityAt ??
-              serverAttempt.lastActivityAt,
-        );
-
-        await _repository.upsert<StudentAttempt>(updatedAttempt);
-
-        state = state.copyWith(
-          currentAttempt: updatedAttempt,
-          stepStatuses: mergedStepStatuses,
-          isOffline: false,
-        );
-
-        print('Successfully synced resumed attempt with server');
-      } else {
-        print('Failed to sync resumed attempt: ${result.error}');
-        state = state.copyWith();
-      }
-    } catch (e) {
-      print('Error syncing resumed attempt: $e');
-      state = state.copyWith();
-    }
-  }
-
-  // Existing Attempts Management (preserved for compatibility)
-  Future<void> _checkAndHandleExistingAttempts(AttemptConfig config) async {
-    if (_paperId == null) return;
-
-    try {
-      final allAttempts = await _repository.get<StudentAttempt>();
-      final incompleteAttempts = allAttempts
-          .where((attempt) =>
-              attempt.paperId == _paperId &&
-              attempt.completedAt == null &&
-              attempt.mode == config.mode)
-          .toList();
-
-      for (final existingAttempt in incompleteAttempts) {
-        final completedAttempt = existingAttempt.copyWith(
-          completedAt: DateTime.now(),
-          autoSubmitted: true,
-          needsSync: true,
-        );
-        await _repository.upsert<StudentAttempt>(completedAttempt);
-
-        if (!state.isOffline) {
-          try {
-            final completeAttemptUseCase =
-                _ref.read(completeAttemptUseCaseProvider);
-            await completeAttemptUseCase(
-              attemptId: existingAttempt.id,
-              autoSubmitted: true,
-            );
-          } catch (e) {
-            // Ignore sync errors
-          }
-        }
-      }
-    } catch (e) {
-      // Only create offline attempt if server sync fails
-      await _createOfflineAttempt(config);
-    }
-  }
-
-  Future<void> _createOfflineAttempt(AttemptConfig config) async {
-    if (_paperId == null) return;
-
-    final now = DateTime.now();
-    final offlineAttempt = StudentAttempt(
-      id: const Uuid().v4(),
-      paperId: _paperId!,
-      mode: config.mode,
-      enableHints: config.enableHints,
-      startedAt: now,
-      timerStartedAt: config.isExamMode ? now : null,
-      needsSync: true,
-    );
-
-    await _repository.upsert<StudentAttempt>(offlineAttempt);
-    await _loadCompleteAttemptDataOfflineFirst(offlineAttempt, config);
-    state = state.copyWith();
   }
 
   // Timer Management
@@ -1104,7 +1059,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     );
 
     _repository.upsert<StudentAttempt>(updatedAttempt);
-    print('Exam timer paused at: ${now.toIso8601String()}');
   }
 
   void resumeExamTimer() {
@@ -1145,9 +1099,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     } else {
       _handleTimerExpired();
     }
-
-    print('Exam timer resumed. Paused for: ${pauseDuration.inMinutes} minutes');
-    print('New remaining time: $newRemainingSeconds seconds');
   }
 
   void startTimer(int durationSeconds) {
@@ -1163,7 +1114,6 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       await Future.delayed(const Duration(seconds: 1));
 
       if (state.isTimerPaused) {
-        print('Timer countdown stopped - paused');
         break;
       }
 
@@ -1185,47 +1135,7 @@ class AttemptsController extends StateNotifier<AttemptsState> {
     completeAttempt(autoSubmitted: true);
   }
 
-  // Navigation and UI Management
-  void goToPage(int page) {
-    if (page >= 1 && page <= state.totalPages) {
-      state = state.copyWith(currentPage: page);
-    }
-  }
-
-  void goToPreviousPage() {
-    if (state.canGoToPreviousPage) {
-      goToPage(state.currentPage - 1);
-    }
-  }
-
-  void goToNextPage() {
-    if (state.canGoToNextPage) {
-      goToPage(state.currentPage + 1);
-    }
-  }
-
-  void switchTab(String tab) {
-    if (tab == 'memo' && !state.memoEnabled) return;
-    state = state.copyWith(currentTab: tab);
-  }
-
-  void toggleHints() {
-    if (state.isPracticeMode) {
-      state = state.copyWith(showHints: !state.showHints);
-    }
-  }
-
-  void toggleSolutionExpansion(String questionPartId) {
-    final expanded = Map<String, bool>.from(state.expandedSolutions);
-    expanded[questionPartId] = !(expanded[questionPartId] ?? false);
-    state = state.copyWith(expandedSolutions: expanded);
-  }
-
-  void enableMemo() {
-    state = state.copyWith(memoEnabled: true);
-  }
-
-  // Completion Management
+  // CRITICAL FIX: Completion Management
   Future<void> completeAttempt({bool autoSubmitted = false}) async {
     if (state.currentAttempt == null) return;
 
@@ -1239,8 +1149,17 @@ class AttemptsController extends StateNotifier<AttemptsState> {
 
     await _repository.upsert<StudentAttempt>(completedAttempt);
 
+    // CRITICAL: Update the userAttempts list with completed attempt
+    final updatedUserAttempts = state.userAttempts.map((attempt) {
+      if (attempt.id == completedAttempt.id) {
+        return completedAttempt;
+      }
+      return attempt;
+    }).toList();
+
     state = state.copyWith(
       currentAttempt: completedAttempt,
+      userAttempts: updatedUserAttempts,
       isLoading: false,
       memoEnabled: true,
     );
@@ -1268,22 +1187,218 @@ class AttemptsController extends StateNotifier<AttemptsState> {
         );
 
         await _repository.upsert<StudentAttempt>(syncedAttempt);
-        state = state.copyWith(currentAttempt: syncedAttempt);
 
-        print('Completed attempt synced to server successfully');
-      } else {
-        print('Failed to sync completed attempt: ${result.error}');
+        // CRITICAL: Update userAttempts list with synced attempt
+        final updatedUserAttempts = state.userAttempts.map((a) {
+          if (a.id == syncedAttempt.id) {
+            return syncedAttempt;
+          }
+          return a;
+        }).toList();
+
+        state = state.copyWith(
+          currentAttempt: syncedAttempt,
+          userAttempts: updatedUserAttempts,
+        );
       }
     } catch (e) {
-      print('Error syncing completed attempt: $e');
-      state = state.copyWith();
+      // Silent fail
     }
   }
 
-  // Utility Methods
+  Future<void> _syncCreateAttemptWithServer(
+      AttemptConfig config, String localAttemptId) async {
+    try {
+      final createAttemptUseCase = _ref.read(createAttemptUseCaseProvider);
+      final result = await createAttemptUseCase(config);
+
+      if (result.isSuccess) {
+        final serverAttempt = result.data!.attempt;
+
+        final localAttempts = await _repository.get<StudentAttempt>(
+          query: Query.where('id', localAttemptId, limit1: true),
+        );
+
+        if (localAttempts.isNotEmpty) {
+          await _repository.delete<StudentAttempt>(localAttempts.first);
+        }
+
+        final updatedAttempt = serverAttempt.copyWith(
+          stepStatuses: state.currentAttempt?.stepStatuses ?? {},
+          needsSync: false,
+        );
+
+        await _repository.upsert<StudentAttempt>(updatedAttempt);
+
+        final updatedUserAttempts =
+            state.userAttempts.where((a) => a.id != localAttemptId).toList();
+        updatedUserAttempts.insert(0, updatedAttempt);
+
+        state = state.copyWith(
+          currentAttempt: updatedAttempt,
+          userAttempts: updatedUserAttempts,
+          isOffline: false,
+        );
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  Future<void> _syncResumeAttemptWithServer(String attemptId) async {
+    try {
+      final getAttemptUseCase = _ref.read(getAttemptUseCaseProvider);
+      final result = await getAttemptUseCase(attemptId);
+
+      if (result.isSuccess) {
+        final serverAttempt = result.data!;
+
+        final mergedStepStatuses = {
+          ...state.stepStatuses,
+          if (serverAttempt.stepStatuses != null)
+            ...Map<String, String>.from(serverAttempt.stepStatuses!),
+        };
+
+        final updatedAttempt = serverAttempt.copyWith(
+          stepStatuses: mergedStepStatuses,
+          timerStartedAt: state.currentAttempt?.timerStartedAt ??
+              serverAttempt.timerStartedAt,
+          lastActivityAt: state.currentAttempt?.lastActivityAt ??
+              serverAttempt.lastActivityAt,
+        );
+
+        await _repository.upsert<StudentAttempt>(updatedAttempt);
+
+        state = state.copyWith(
+          currentAttempt: updatedAttempt,
+          stepStatuses: mergedStepStatuses,
+          isOffline: false,
+        );
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  Future<void> _checkAndHandleExistingAttempts(AttemptConfig config) async {
+    if (_paperId == null) return;
+
+    try {
+      final allAttempts = await _repository.get<StudentAttempt>();
+      final incompleteAttempts = allAttempts
+          .where((attempt) =>
+              attempt.paperId == _paperId &&
+              attempt.completedAt == null &&
+              attempt.mode == config.mode)
+          .toList();
+
+      // OPTIMIZATION: Complete all incomplete attempts in parallel
+      if (incompleteAttempts.isNotEmpty) {
+        await Future.wait(incompleteAttempts.map((existingAttempt) async {
+          final completedAttempt = existingAttempt.copyWith(
+            completedAt: DateTime.now(),
+            autoSubmitted: true,
+            needsSync: true,
+          );
+          await _repository.upsert<StudentAttempt>(completedAttempt);
+
+          if (!state.isOffline) {
+            try {
+              final completeAttemptUseCase =
+                  _ref.read(completeAttemptUseCaseProvider);
+              await completeAttemptUseCase(
+                attemptId: existingAttempt.id,
+                autoSubmitted: true,
+              );
+            } catch (e) {
+              // Silent fail
+            }
+          }
+        }));
+      }
+    } catch (e) {
+      await _createOfflineAttempt(config);
+    }
+  }
+
+  Future<void> _createOfflineAttempt(AttemptConfig config) async {
+    if (_paperId == null) return;
+
+    final now = DateTime.now();
+    final offlineAttempt = StudentAttempt(
+      id: const Uuid().v4(),
+      paperId: _paperId!,
+      mode: config.mode,
+      enableHints: config.enableHints,
+      startedAt: now,
+      timerStartedAt: config.isExamMode ? now : null,
+      needsSync: true,
+    );
+
+    await _repository.upsert<StudentAttempt>(offlineAttempt);
+    await _loadCompleteAttemptDataOfflineFirst(offlineAttempt, config);
+  }
+
+  Future<void> loadProgress() async {
+    await loadProgressOfflineFirst();
+  }
+
+  void goToPage(int page) {
+    if (state.allDisplayPages.contains(page)) {
+      state = state.copyWith(currentPage: page);
+    }
+  }
+
+  void goToPreviousPage() {
+    final prevPage = state.previousPage;
+    if (prevPage != null) {
+      goToPage(prevPage);
+    }
+  }
+
+  void goToNextPage() {
+    final nextPage = state.nextPage;
+    if (nextPage != null) {
+      goToPage(nextPage);
+    }
+  }
+
+  void _setInitialPage(int serverCurrentPage, int serverTotalPages) {
+    state = state.copyWith(totalPages: serverTotalPages);
+
+    if (state.allPagesQuestions.containsKey(serverCurrentPage) &&
+        state.allPagesQuestions[serverCurrentPage]!.isNotEmpty) {
+      state = state.copyWith(currentPage: serverCurrentPage);
+    } else if (state.availableServerPages.isNotEmpty) {
+      state = state.copyWith(currentPage: state.availableServerPages.first);
+    } else {
+      state = state.copyWith(currentPage: 1);
+    }
+  }
+
+  void switchTab(String tab) {
+    if (tab == 'memo' && !state.memoEnabled) return;
+    state = state.copyWith(currentTab: tab);
+  }
+
+  void toggleHints() {
+    if (state.isPracticeMode) {
+      state = state.copyWith(showHints: !state.showHints);
+    }
+  }
+
+  void toggleSolutionExpansion(String questionPartId) {
+    final expanded = Map<String, bool>.from(state.expandedSolutions);
+    expanded[questionPartId] = !(expanded[questionPartId] ?? false);
+    state = state.copyWith(expandedSolutions: expanded);
+  }
+
+  void enableMemo() {
+    state = state.copyWith(memoEnabled: true);
+  }
+
   Future<void> loadMoreAttempts() async {
     if (!state.hasNextAttemptsPage || state.isLoadingMoreAttempts) return;
-
     final nextPage = state.currentAttemptsPage + 1;
     await loadUserAttempts(page: nextPage, refresh: false);
   }
@@ -1306,15 +1421,10 @@ class AttemptsController extends StateNotifier<AttemptsState> {
       await loadUserAttempts(page: 1, refresh: true);
     }
   }
-
-  // Legacy method for compatibility
-  Future<void> loadProgress() async {
-    await loadProgressOfflineFirst();
-  }
 }
 
 void unawaited(Future<void> future) {
   future.catchError((error) {
-    print('Background operation failed: $error');
+    // Silent fail
   });
 }

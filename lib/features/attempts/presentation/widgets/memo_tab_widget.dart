@@ -16,6 +16,10 @@ class MemoTabWidget extends StatelessWidget {
   final VoidCallback onNextPage;
   final int currentPage;
   final int totalPages;
+  final bool canGoToPrevious;
+  final bool canGoToNext;
+  final String pageDisplayText;
+  final bool isOnInstructionsPage;
 
   const MemoTabWidget({
     super.key,
@@ -29,6 +33,10 @@ class MemoTabWidget extends StatelessWidget {
     required this.onNextPage,
     required this.currentPage,
     required this.totalPages,
+    required this.canGoToPrevious,
+    required this.canGoToNext,
+    required this.pageDisplayText,
+    required this.isOnInstructionsPage,
   });
 
   @override
@@ -53,6 +61,7 @@ class MemoTabWidget extends StatelessWidget {
         ),
 
         // Navigation footer
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -65,18 +74,21 @@ class MemoTabWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               TextButton.icon(
-                onPressed: currentPage > 1 ? onPreviousPage : null,
+                onPressed: canGoToPrevious
+                    ? onPreviousPage
+                    : null, // Use computed property
                 icon: const Icon(Icons.chevron_left),
                 label: const Text('Previous'),
               ),
               Text(
-                'Page $currentPage of $totalPages',
+                pageDisplayText, // Use computed display text
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
               ),
               TextButton.icon(
-                onPressed: currentPage < totalPages ? onNextPage : null,
+                onPressed:
+                    canGoToNext ? onNextPage : null, // Use computed property
                 icon: const Icon(Icons.chevron_right),
                 label: const Text('Next'),
                 iconAlignment: IconAlignment.end,
@@ -155,38 +167,19 @@ class MemoTabWidget extends StatelessWidget {
 
   Widget _buildSimpleQuestionMemo(BuildContext context, Question question) {
     final theme = Theme.of(context);
-    final questionMarksEarned = _calculateQuestionMarks(question);
-    final totalMarks = question.solutionSteps
-        .fold<int>(0, (sum, step) => sum + (step.marksForThisStep ?? 0));
 
     return Container(
       margin: const EdgeInsets.only(left: 16, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Question text and marks
+          // Question text without marks
           if (question.questionText != null) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: LaTeXTextWidget(
-                    text: question.questionText!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text(
-                  '$questionMarksEarned ${questionMarksEarned == 1 ? 'mark' : 'marks'} / $totalMarks',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: questionMarksEarned == totalMarks
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            LaTeXTextWidget(
+              text: question.questionText!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 6),
           ],
@@ -212,7 +205,7 @@ class MemoTabWidget extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  ...question.solutionSteps.map(
+                  ...question.solutionSteps.map<Widget>(
                     (step) => _buildSolutionStep(context, step),
                   ),
                 ],
@@ -277,9 +270,11 @@ class MemoTabWidget extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  ...part.solutionSteps.map(
-                    (step) => _buildSolutionStep(context, step),
-                  ),
+                  ...part.solutionSteps
+                      .map(
+                        (step) => _buildSolutionStep(context, step),
+                      )
+                      .toList(),
                 ],
               ),
             ),
@@ -299,6 +294,7 @@ class MemoTabWidget extends StatelessWidget {
 
   Widget _buildSolutionStep(BuildContext context, step) {
     final theme = Theme.of(context);
+    final status = stepStatuses[step.id] ?? 'NOT_ATTEMPTED';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -308,21 +304,81 @@ class MemoTabWidget extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: Checkbox(
-                  value: stepStatuses[step.id] == 'CORRECT',
-                  onChanged: (value) {
-                    onMarkStep(
-                      step.id,
-                      value == true ? 'CORRECT' : 'INCORRECT',
-                    );
-                  },
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              // Two-button toggle for marking
+              Row(
+                children: [
+                  // Incorrect button
+                  InkWell(
+                    onTap: () {
+                      // Toggle: if already incorrect, mark as not attempted
+                      final newStatus =
+                          status == 'INCORRECT' ? 'NOT_ATTEMPTED' : 'INCORRECT';
+                      onMarkStep(step.id, newStatus);
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: status == 'INCORRECT'
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: status == 'INCORRECT'
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.outline.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: status == 'INCORRECT'
+                            ? theme.colorScheme.onError
+                            : theme.colorScheme.onSurfaceVariant
+                                .withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Correct button
+                  InkWell(
+                    onTap: () {
+                      // Toggle: if already correct, mark as not attempted
+                      final newStatus =
+                          status == 'CORRECT' ? 'NOT_ATTEMPTED' : 'CORRECT';
+                      onMarkStep(step.id, newStatus);
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: status == 'CORRECT'
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: status == 'CORRECT'
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outline.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.check,
+                        size: 18,
+                        color: status == 'CORRECT'
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurfaceVariant
+                                .withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
                 child: LaTeXTextWidget(
                   text: step.description,
@@ -353,7 +409,7 @@ class MemoTabWidget extends StatelessWidget {
           if (step.workingOut != null && step.workingOut!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Container(
-              margin: const EdgeInsets.only(left: 28),
+              margin: const EdgeInsets.only(left: 60),
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color:
@@ -372,6 +428,21 @@ class MemoTabWidget extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+          // Solution images
+          if (step.solutionImages != null &&
+              step.solutionImages!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            ...step.solutionImages!.map((imageUrl) => Container(
+                  margin: const EdgeInsets.only(left: 60, bottom: 4),
+                  child: NetworkImageWidget(
+                    imageUrl: imageUrl,
+                    height: 120,
+                    fit: BoxFit.contain,
+                    borderRadius: BorderRadius.circular(4),
+                    semanticsLabel: 'Solution step image',
+                  ),
+                )),
           ],
         ],
       ),
@@ -430,7 +501,7 @@ class MemoTabWidget extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: subPart.solutionSteps.map((step) {
+                children: subPart.solutionSteps.map<Widget>((step) {
                   return _buildSolutionStep(context, step);
                 }).toList(),
               ),

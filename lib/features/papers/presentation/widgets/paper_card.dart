@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../attempts/domain/entities/attempt_config.dart';
 import '../../../auth/presentation/providers/auth_presentation_providers.dart';
-import '../controllers/papers_controller.dart'; // Import for PaperAvailability
+import '../../../attempts/presentation/providers/attempts_presentation_providers.dart';
+import '../controllers/papers_controller.dart';
 
 class PaperCard extends ConsumerWidget {
-  final PaperAvailability paperAvailability; // Changed from ExamPaper
+  final PaperAvailability paperAvailability;
   final VoidCallback? onTap;
 
   const PaperCard({
@@ -195,9 +196,8 @@ class PaperCard extends ConsumerWidget {
     if (paperAvailability.canStartPractice) {
       buttons.add(
         ElevatedButton.icon(
-          // <-- Remove Expanded here
           onPressed: () => _startAttempt(
-              context, AttemptConfig.practice(paperAvailability.paper.id)),
+              context, ref, AttemptConfig.practice(paperAvailability.paper.id)),
           icon: const Icon(Icons.psychology_outlined, size: 18),
           label: const Text('START PRACTICE'),
           style: ElevatedButton.styleFrom(
@@ -214,9 +214,9 @@ class PaperCard extends ConsumerWidget {
 
       buttons.add(
         ElevatedButton.icon(
-          // <-- Remove Expanded here
           onPressed: () => _startAttempt(
               context,
+              ref,
               AttemptConfig.exam(paperAvailability.paper.id,
                   paperAvailability.paper.durationMinutes)),
           icon: const Icon(Icons.timer_outlined, size: 18),
@@ -234,7 +234,7 @@ class PaperCard extends ConsumerWidget {
     if (buttons.length == 1) {
       return SizedBox(
         width: double.infinity,
-        child: buttons.first, // <-- Now this is just an ElevatedButton
+        child: buttons.first,
       );
     }
 
@@ -294,9 +294,24 @@ class PaperCard extends ConsumerWidget {
     }
   }
 
-  void _startAttempt(BuildContext context, AttemptConfig config) {
-    context.push(
+  // CRITICAL: Updated to await navigation and refresh on return
+  Future<void> _startAttempt(
+      BuildContext context, WidgetRef ref, AttemptConfig config) async {
+    print('=== STARTING ATTEMPT ===');
+    print('Paper ID: ${paperAvailability.paper.id}');
+    print('Mode: ${config.mode}');
+
+    // Navigate and wait for return
+    await context.push(
         '/attempt/${paperAvailability.paper.id}?mode=${config.mode.toLowerCase()}');
+
+    // When we return, refresh the attempts list
+    print('=== RETURNED FROM ATTEMPT ===');
+    if (context.mounted) {
+      print('Refreshing attempts after return...');
+      await ref.read(userAttemptsControllerProvider.notifier).refreshAttempts();
+      print('Attempts refreshed');
+    }
   }
 
   void _requireLogin(BuildContext context) {

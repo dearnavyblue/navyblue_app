@@ -9,6 +9,8 @@ import 'package:brick_rest/brick_rest.dart';
 // ignore: unused_import, unused_shown_name, unnecessary_import
 import 'package:brick_sqlite/brick_sqlite.dart';
 // ignore: unused_import, unused_shown_name, unnecessary_import
+import 'package:navyblue_app/brick/models/mcq_option.model.dart';
+// ignore: unused_import, unused_shown_name, unnecessary_import
 import 'package:navyblue_app/brick/models/question_part.model.dart';
 // ignore: unused_import, unused_shown_name, unnecessary_import
 import 'package:navyblue_app/brick/models/solution_step.model.dart';// GENERATED CODE DO NOT EDIT
@@ -22,6 +24,7 @@ import 'package:brick_offline_first/brick_offline_first.dart' show RuntimeOfflin
 import 'package:sqflite_common/sqlite_api.dart' show DatabaseExecutor;
 
 import '../brick/models/exam_paper.model.dart';
+import '../brick/models/mcq_option.model.dart';
 import '../brick/models/paper_filters.model.dart';
 import '../brick/models/question.model.dart';
 import '../brick/models/question_part.model.dart';
@@ -31,6 +34,7 @@ import '../brick/models/student_attempt.model.dart';
 import '../brick/models/user.model.dart';
 
 part 'adapters/exam_paper_adapter.g.dart';
+part 'adapters/m_c_q_option_adapter.g.dart';
 part 'adapters/paper_filters_adapter.g.dart';
 part 'adapters/question_adapter.g.dart';
 part 'adapters/question_part_adapter.g.dart';
@@ -42,6 +46,7 @@ part 'adapters/user_adapter.g.dart';
 /// Rest mappings should only be used when initializing a [RestProvider]
 final Map<Type, RestAdapter<RestModel>> restMappings = {
   ExamPaper: ExamPaperAdapter(),
+  MCQOption: MCQOptionAdapter(),
   PaperFilters: PaperFiltersAdapter(),
   Question: QuestionAdapter(),
   QuestionPart: QuestionPartAdapter(),
@@ -55,6 +60,7 @@ final restModelDictionary = RestModelDictionary(restMappings);
 /// Sqlite mappings should only be used when initializing a [SqliteProvider]
 final Map<Type, SqliteAdapter<SqliteModel>> sqliteMappings = {
   ExamPaper: ExamPaperAdapter(),
+  MCQOption: MCQOptionAdapter(),
   PaperFilters: PaperFiltersAdapter(),
   Question: QuestionAdapter(),
   QuestionPart: QuestionPartAdapter(),

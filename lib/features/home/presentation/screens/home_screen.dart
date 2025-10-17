@@ -6,6 +6,8 @@ import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
+import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
+import 'dart:async';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +19,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   bool _hasLoadedOnce = false;
+  int _lastAttemptCount = 0;
+  DateTime? _lastRefreshTime;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -30,24 +35,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // Detect when app comes back to foreground
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && _hasLoadedOnce) {
-      // Refresh data when user returns to app
-      _loadDashboardData();
+      // OPTIMIZATION: Only refresh if it's been more than 30 seconds
+      final now = DateTime.now();
+      if (_lastRefreshTime == null ||
+          now.difference(_lastRefreshTime!) > const Duration(seconds: 30)) {
+        _loadDashboardData();
+        _lastRefreshTime = now;
+      }
     }
   }
 
-  // Load dashboard data and track that we've loaded once
   void _loadDashboardData() {
-    ref.read(homeControllerProvider.notifier).loadDashboardData();
-    _hasLoadedOnce = true;
+    ref.read(homeControllerProvider.notifier).loadDashboardData().then((_) {
+      if (mounted) {
+        setState(() {
+          _hasLoadedOnce = true;
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+    });
   }
 
   @override
@@ -56,24 +71,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
 
+    // OPTIMIZATION: Debounced listener for attempt changes
+    ref.listen(userAttemptsControllerProvider, (previous, next) {
+      if (previous != null &&
+          previous.userAttempts.length != next.userAttempts.length &&
+          next.userAttempts.length != _lastAttemptCount) {
+        _lastAttemptCount = next.userAttempts.length;
+
+        // Cancel existing timer
+        _debounceTimer?.cancel();
+
+        // Debounce refresh by 500ms
+        _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (mounted && _lastAttemptCount == next.userAttempts.length) {
+            ref.read(homeControllerProvider.notifier).loadDashboardData();
+          }
+        });
+      }
+    });
+
+    final isInitialLoading =
+        !_hasLoadedOnce || (state.isLoading && !state.hasData);
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(homeControllerProvider.notifier).refreshData(),
+        onRefresh: () async {
+          _lastRefreshTime = DateTime.now();
+          await ref.read(homeControllerProvider.notifier).refreshData();
+        },
         child: CustomScrollView(
           slivers: [
-            if ((state.isLoading && !state.hasData) ||
-                state.activeAttempts.isEmpty && !_hasLoadedOnce)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+            if (isInitialLoading)
+              SliverFillRemaining(
+                child: _buildSkeletonLoader(theme),
               )
             else if (state.error != null)
               _buildErrorSliver(theme, state.error!)
             else
               SliverList(
                 delegate: SliverChildListDelegate([
-                  // Simple greeting header with refresh button
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -90,33 +127,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           IconButton(
                             icon: const Icon(Icons.refresh),
-                            onPressed: _loadDashboardData,
+                            onPressed: () {
+                              _lastRefreshTime = DateTime.now();
+                              _loadDashboardData();
+                            },
                             tooltip: 'Refresh',
                           ),
                         ],
                       ),
                     ),
                   ),
-
-                  // Quick Actions
                   _buildQuickActions(context, theme, state),
-
                   const SizedBox(height: 24),
-
-                  // Main content based on hasData
                   if (state.hasData)
                     _buildProgressOverview(theme, state)
                   else
                     _buildGetStartedSection(context, theme),
-
                   const SizedBox(height: 24),
-
-                  // Recent Activity
                   _buildActivitySection(context, theme, state),
-
                   const SizedBox(height: 100),
                 ]),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // OPTIMIZATION: Skeleton loader for better perceived performance
+  Widget _buildSkeletonLoader(ThemeData theme) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 60),
+        _buildSkeletonCard(theme, height: 120),
+        const SizedBox(height: 16),
+        _buildSkeletonCard(theme, height: 160),
+        const SizedBox(height: 16),
+        _buildSkeletonCard(theme, height: 120),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonCard(ThemeData theme, {required double height}) {
+    return Card(
+      child: Container(
+        height: height,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 150,
+              height: 16,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              height: 12,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -148,13 +241,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         icon: Icons.play_circle_fill_rounded,
                         title: 'Resume Study',
                         subtitle: '${state.activeAttempts.length} active',
-                        onTap: () async {
-                          await context.push('/user-attempts');
-                          // Refresh when returning from user attempts
-                          if (mounted) {
-                            _loadDashboardData();
-                          }
-                        },
+                        onTap: () => context.push('/user-attempts'),
                         isPrimary: true,
                       )
                     : _buildActionCard(
@@ -184,13 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         icon: Icons.history_rounded,
                         title: 'Past Attempts',
                         subtitle: 'View history',
-                        onTap: () async {
-                          await context.push('/user-attempts');
-                          // Refresh when returning from user attempts
-                          if (mounted) {
-                            _loadDashboardData();
-                          }
-                        },
+                        onTap: () => context.push('/user-attempts'),
                       ),
               ),
             ],
@@ -501,13 +582,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             }),
             if (state.activeAttempts.length > 3)
               TextButton(
-                onPressed: () async {
-                  await context.push('/user-attempts');
-                  // Refresh when returning from user attempts
-                  if (mounted) {
-                    _loadDashboardData();
-                  }
-                },
+                onPressed: () => context.push('/user-attempts'),
                 child: Text('View all ${state.activeAttempts.length} attempts'),
               ),
           ] else ...[
@@ -525,13 +600,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     return Card(
       child: InkWell(
-        onTap: () async {
-          await context.push('/user-attempts');
-          // Refresh when returning from user attempts
-          if (mounted) {
-            _loadDashboardData();
-          }
-        },
+        onTap: () => context.push('/user-attempts'),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -682,10 +751,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Colors.green;
       case 'good':
         return Colors.blue;
-      case 'fair':
+      case 'average':
         return Colors.orange;
-      case 'poor':
-      case 'needs work':
+      case 'below average':
+      case 'needs improvement':
         return Colors.red;
       default:
         return theme.colorScheme.primary;

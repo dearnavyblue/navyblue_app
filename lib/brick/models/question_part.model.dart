@@ -2,6 +2,7 @@
 import 'package:brick_offline_first_with_rest/brick_offline_first_with_rest.dart';
 import 'package:brick_rest/brick_rest.dart';
 import 'package:brick_sqlite/brick_sqlite.dart';
+import 'package:navyblue_app/brick/models/mcq_option.model.dart';
 import 'package:navyblue_app/brick/models/solution_step.model.dart';
 
 @ConnectOfflineFirstWithRest()
@@ -10,9 +11,13 @@ class QuestionPart extends OfflineFirstWithRestModel {
   @Rest(name: 'id')
   final String id;
 
+  // OPTIMIZATION: Index questionId for filtering parts by question
+  @Sqlite(index: true)
   @Rest(name: 'questionId')
   final String questionId;
 
+  // OPTIMIZATION: Index parentPartId for finding sub-parts
+  @Sqlite(index: true)
   @Rest(name: 'parentPartId')
   final String? parentPartId;
 
@@ -31,20 +36,29 @@ class QuestionPart extends OfflineFirstWithRestModel {
   @Rest(name: 'hintText')
   final String? hintText;
 
+  // OPTIMIZATION: Index nestingLevel for filtering by depth
+  @Sqlite(index: true)
   @Rest(name: 'nestingLevel')
   final int nestingLevel;
 
+  // OPTIMIZATION: Index orderIndex for sorting parts
+  @Sqlite(index: true)
   @Rest(name: 'orderIndex')
   final int orderIndex;
 
   @Rest(name: 'requiresWorking')
   final bool requiresWorking;
 
+  // OPTIMIZATION: Index isActive for filtering active parts
+  @Sqlite(index: true)
   @Rest(name: 'isActive')
   final bool isActive;
 
   @Rest(name: 'createdAt')
   final DateTime createdAt;
+
+  @Rest(name: 'mcqOptions')
+  final List<MCQOption>? mcqOptions;
 
   // Relationships
   @Rest(name: 'solutionSteps')
@@ -54,11 +68,11 @@ class QuestionPart extends OfflineFirstWithRestModel {
   final List<QuestionPart> subParts;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -85,7 +99,14 @@ class QuestionPart extends OfflineFirstWithRestModel {
     DateTime? lastSyncedAt,
     this.needsSync = false,
     this.deviceInfo,
+    this.mcqOptions,
   }) : lastSyncedAt = lastSyncedAt ?? DateTime.now();
+
+  // Helper methods
+  bool get hasSubParts => subParts.isNotEmpty;
+  bool get hasSolutionSteps => solutionSteps.isNotEmpty;
+  int get totalSteps => solutionSteps.length;
+  bool get isMCQPart => mcqOptions != null && mcqOptions!.isNotEmpty;
 
   QuestionPart copyWith({
     String? id,
@@ -95,7 +116,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
     String? partText,
     int? marks,
     List<String>? partImages,
-    String? hintText, // Add this
+    String? hintText,
     int? nestingLevel,
     int? orderIndex,
     bool? requiresWorking,
@@ -106,6 +127,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
     DateTime? lastSyncedAt,
     bool? needsSync,
     String? deviceInfo,
+    List<MCQOption>? mcqOptions,
   }) {
     return QuestionPart(
       id: id ?? this.id,
@@ -115,7 +137,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       partText: partText ?? this.partText,
       marks: marks ?? this.marks,
       partImages: partImages ?? this.partImages,
-      hintText: hintText ?? this.hintText, // Add this
+      hintText: hintText ?? this.hintText,
       nestingLevel: nestingLevel ?? this.nestingLevel,
       orderIndex: orderIndex ?? this.orderIndex,
       requiresWorking: requiresWorking ?? this.requiresWorking,
@@ -126,6 +148,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       needsSync: needsSync ?? this.needsSync,
       deviceInfo: deviceInfo ?? this.deviceInfo,
+      mcqOptions: mcqOptions ?? this.mcqOptions,
     );
   }
 
@@ -138,7 +161,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       partText: json['partText'] ?? '',
       marks: json['marks'] ?? 0,
       partImages: List<String>.from(json['partImages'] ?? []),
-      hintText: json['hintText'], // Add this
+      hintText: json['hintText'],
       nestingLevel: json['nestingLevel'] ?? 1,
       orderIndex: json['orderIndex'] ?? 0,
       requiresWorking: json['requiresWorking'] ?? false,
@@ -156,6 +179,11 @@ class QuestionPart extends OfflineFirstWithRestModel {
               .map((partJson) => QuestionPart.fromJson(partJson))
               .toList()
           : [],
+      mcqOptions: json['mcqOptions'] != null
+          ? (json['mcqOptions'] as List)
+              .map((optionJson) => MCQOption.fromJson(optionJson))
+              .toList()
+          : null,
     );
   }
 
@@ -168,7 +196,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       'partText': partText,
       'marks': marks,
       'partImages': partImages,
-      'hintText': hintText, // Add this
+      'hintText': hintText,
       'nestingLevel': nestingLevel,
       'orderIndex': orderIndex,
       'requiresWorking': requiresWorking,
@@ -176,11 +204,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       'createdAt': createdAt.toIso8601String(),
       'solutionSteps': solutionSteps.map((step) => step.toJson()).toList(),
       'subParts': subParts.map((part) => part.toJson()).toList(),
+      'mcqOptions': mcqOptions?.map((opt) => opt.toJson()).toList(),
     };
   }
-
-  // Helper methods
-  bool get hasSubParts => subParts.isNotEmpty;
-  bool get hasSolutionSteps => solutionSteps.isNotEmpty;
-  int get totalSteps => solutionSteps.length;
 }

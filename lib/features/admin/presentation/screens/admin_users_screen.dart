@@ -90,7 +90,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     // Grade Filter
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedGradeFilter,
+                        initialValue: _selectedGradeFilter,
                         decoration: const InputDecoration(
                           labelText: 'Filter by Grade',
                           isDense: true,
@@ -119,7 +119,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     // Role Filter
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedRoleFilter,
+                        initialValue: _selectedRoleFilter,
                         decoration: const InputDecoration(
                           labelText: 'Filter by Role',
                           isDense: true,

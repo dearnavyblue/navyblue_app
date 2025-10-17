@@ -1,3 +1,4 @@
+// lib/brick/models/student_attempt.model.dart
 import 'package:brick_offline_first_with_rest/brick_offline_first_with_rest.dart';
 import 'package:brick_rest/brick_rest.dart';
 import 'package:brick_sqlite/brick_sqlite.dart';
@@ -8,21 +9,29 @@ class StudentAttempt extends OfflineFirstWithRestModel {
   @Rest(name: 'id')
   final String id;
 
+  // OPTIMIZATION: Index paperId for filtering attempts by paper
+  @Sqlite(index: true)
   @Rest(name: 'paperId')
   final String paperId;
 
+  // OPTIMIZATION: Index mode for filtering by PRACTICE/EXAM
+  @Sqlite(index: true)
   @Rest(name: 'mode')
   final String mode; // PRACTICE or EXAM
 
   @Rest(name: 'enableHints')
   final bool enableHints;
 
+  // OPTIMIZATION: Index startedAt for sorting attempts chronologically
+  @Sqlite(index: true)
   @Rest(name: 'startedAt')
   final DateTime startedAt;
 
   @Rest(name: 'timerStartedAt')
   final DateTime? timerStartedAt;
 
+  // OPTIMIZATION: Index completedAt for filtering active vs completed
+  @Sqlite(index: true)
   @Rest(name: 'completedAt')
   final DateTime? completedAt;
 
@@ -53,7 +62,6 @@ class StudentAttempt extends OfflineFirstWithRestModel {
   @Rest(name: 'autoSubmitted')
   final bool autoSubmitted;
 
-  // Use Map<String, dynamic> to avoid type casting issues
   @Rest(name: 'stepStatuses')
   @Sqlite()
   final Map<String, dynamic>? stepStatuses;
@@ -63,11 +71,13 @@ class StudentAttempt extends OfflineFirstWithRestModel {
   final Map<String, dynamic>? calculatedProgress;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  // OPTIMIZATION: Index lastSyncedAt for sync management
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime? lastSyncedAt;
 
-  @Sqlite()
+  // OPTIMIZATION: Index needsSync for finding pending syncs
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -105,10 +115,7 @@ class StudentAttempt extends OfflineFirstWithRestModel {
   bool get isPracticeMode => mode == 'PRACTICE';
   bool get isExamMode => mode == 'EXAM';
 
-  // Helper getter for lastActivityAt with fallback
   DateTime get effectiveLastActivityAt => lastActivityAt ?? startedAt;
-
-  // Helper getter for lastSyncedAt with fallback
   DateTime get effectiveLastSyncedAt => lastSyncedAt ?? startedAt;
 
   double get progressPercentage {
@@ -116,19 +123,16 @@ class StudentAttempt extends OfflineFirstWithRestModel {
     return ((totalMarksEarned ?? 0) / totalMarksPossible!) * 100;
   }
 
-  // Helper method to get step status - with safe casting
   String getStepStatus(String stepId) {
     if (stepStatuses == null) return 'NOT_ATTEMPTED';
     final status = stepStatuses![stepId];
     return status?.toString() ?? 'NOT_ATTEMPTED';
   }
 
-  // Helper method to check if step is marked as correct
   bool isStepCorrect(String stepId) {
     return getStepStatus(stepId) == 'CORRECT';
   }
 
-  // Helper method to get count of marked steps
   int get markedStepsCount {
     if (stepStatuses == null) return 0;
     return stepStatuses!.values
@@ -136,7 +140,6 @@ class StudentAttempt extends OfflineFirstWithRestModel {
         .length;
   }
 
-  // Helper method to get count of correct steps
   int get correctStepsCount {
     if (stepStatuses == null) return 0;
     return stepStatuses!.values
@@ -144,7 +147,6 @@ class StudentAttempt extends OfflineFirstWithRestModel {
         .length;
   }
 
-  // Helper methods for calculated progress - with null safety
   int get calculatedEarnedMarks {
     try {
       return calculatedProgress?['earnedMarks']?.toInt() ??
@@ -229,7 +231,6 @@ class StudentAttempt extends OfflineFirstWithRestModel {
     );
   }
 
-  // JSON serialization methods with better error handling
   factory StudentAttempt.fromJson(Map<String, dynamic> json) {
     try {
       return StudentAttempt(

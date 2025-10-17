@@ -345,6 +345,11 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
                           .read(attemptsControllerProvider(widget.paperId)
                               .notifier)
                           .toggleHints(),
+                      // NEW: Smart navigation properties
+                      canGoToPrevious: state.canGoToPreviousPage,
+                      canGoToNext: state.canGoToNextPage,
+                      pageDisplayText: state.pageDisplayText,
+                      isOnInstructionsPage: state.isOnInstructionsPage,
                     ),
                     state.memoEnabled
                         ? MemoTabWidget(
@@ -370,6 +375,11 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
                                 .goToNextPage(),
                             currentPage: state.currentPage,
                             totalPages: state.totalPages,
+                            // NEW: Smart navigation properties
+                            canGoToPrevious: state.canGoToPreviousPage,
+                            canGoToNext: state.canGoToNextPage,
+                            pageDisplayText: state.pageDisplayText,
+                            isOnInstructionsPage: state.isOnInstructionsPage,
                           )
                         : Center(
                             child: Column(

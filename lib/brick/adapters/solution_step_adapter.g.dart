@@ -36,7 +36,11 @@ Future<Map<String, dynamic>> _$SolutionStepToRest(SolutionStep instance,
     'isCriticalStep': instance.isCriticalStep,
     'createdAt': instance.createdAt.toIso8601String(),
     'belongs_to_part': instance.belongsToPart,
-    'belongs_to_question': instance.belongsToQuestion
+    'belongs_to_question': instance.belongsToQuestion,
+    'has_images': instance.hasImages,
+    'has_working_out': instance.hasWorkingOut,
+    'has_teaching_note': instance.hasTeachingNote,
+    'has_marks': instance.hasMarks
   };
 }
 
@@ -90,7 +94,11 @@ Future<Map<String, dynamic>> _$SolutionStepToSqlite(SolutionStep instance,
     'needs_sync': instance.needsSync ? 1 : 0,
     'device_info': instance.deviceInfo,
     'belongs_to_part': instance.belongsToPart ? 1 : 0,
-    'belongs_to_question': instance.belongsToQuestion ? 1 : 0
+    'belongs_to_question': instance.belongsToQuestion ? 1 : 0,
+    'has_images': instance.hasImages ? 1 : 0,
+    'has_working_out': instance.hasWorkingOut ? 1 : 0,
+    'has_teaching_note': instance.hasTeachingNote ? 1 : 0,
+    'has_marks': instance.hasMarks ? 1 : 0
   };
 }
 
@@ -205,6 +213,30 @@ class SolutionStepAdapter extends OfflineFirstWithRestAdapter<SolutionStep> {
     'belongsToQuestion': const RuntimeSqliteColumnDefinition(
       association: false,
       columnName: 'belongs_to_question',
+      iterable: false,
+      type: bool,
+    ),
+    'hasImages': const RuntimeSqliteColumnDefinition(
+      association: false,
+      columnName: 'has_images',
+      iterable: false,
+      type: bool,
+    ),
+    'hasWorkingOut': const RuntimeSqliteColumnDefinition(
+      association: false,
+      columnName: 'has_working_out',
+      iterable: false,
+      type: bool,
+    ),
+    'hasTeachingNote': const RuntimeSqliteColumnDefinition(
+      association: false,
+      columnName: 'has_teaching_note',
+      iterable: false,
+      type: bool,
+    ),
+    'hasMarks': const RuntimeSqliteColumnDefinition(
+      association: false,
+      columnName: 'has_marks',
       iterable: false,
       type: bool,
     )

@@ -12,24 +12,36 @@ class ExamPaper extends OfflineFirstWithRestModel {
   @Rest(name: 'title')
   final String title;
 
+  // OPTIMIZATION: Index subject for filtering by subject
+  @Sqlite(index: true)
   @Rest(name: 'subject')
   final String subject;
 
+  // OPTIMIZATION: Index grade for filtering by grade
+  @Sqlite(index: true)
   @Rest(name: 'grade')
   final String grade;
 
+  // OPTIMIZATION: Index syllabus for filtering
+  @Sqlite(index: true)
   @Rest(name: 'syllabus')
   final String syllabus;
 
+  // OPTIMIZATION: Index year for sorting and filtering
+  @Sqlite(index: true)
   @Rest(name: 'year')
   final int year;
 
+  // OPTIMIZATION: Index examPeriod for filtering
+  @Sqlite(index: true)
   @Rest(name: 'examPeriod')
   final String examPeriod;
 
   @Rest(name: 'examLevel')
   final String examLevel;
 
+  // OPTIMIZATION: Index paperType for filtering
+  @Sqlite(index: true)
   @Rest(name: 'paperType')
   final String paperType;
 
@@ -45,14 +57,18 @@ class ExamPaper extends OfflineFirstWithRestModel {
   @Rest(name: 'totalMarks')
   final int? totalMarks;
 
+  // OPTIMIZATION: Index isActive for filtering active papers
+  @Sqlite(index: true)
   @Rest(name: 'isActive')
   final bool isActive;
 
+  // OPTIMIZATION: Index uploadedAt for sorting by upload date
+  @Sqlite(index: true)
   @Rest(name: 'uploadedAt')
   final DateTime uploadedAt;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
@@ -60,7 +76,7 @@ class ExamPaper extends OfflineFirstWithRestModel {
   @Rest(ignore: true)
   final bool isFavorite;
 
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
