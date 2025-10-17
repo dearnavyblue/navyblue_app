@@ -2,12 +2,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navyblue_app/core/theme/app_theme.dart';
 import '../../../attempts/domain/entities/attempt_config.dart';
 import '../../../auth/presentation/providers/auth_presentation_providers.dart';
-import '../controllers/papers_controller.dart'; // Import for PaperAvailability
+import '../controllers/papers_controller.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class PaperCard extends ConsumerWidget {
-  final PaperAvailability paperAvailability; // Changed from ExamPaper
+  final PaperAvailability paperAvailability;
   final VoidCallback? onTap;
 
   const PaperCard({
@@ -22,147 +25,96 @@ class PaperCard extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider);
     final paper = paperAvailability.paper;
 
+    // Get province color from theme extension
+    final provinceColors = theme.extension<ProvinceColors>();
+    final provinceColor =
+        provinceColors?.getColor(paper.province) ?? const Color(0xFF95BBC4);
+
     return Card(
       elevation: 2,
+      color: provinceColor, // Dynamic color based on province
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Paper Header
+              // Top Row - Text on left, Image on right
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Left side - Text content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Top small text - Marks and duration
                         Text(
-                          paper.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                          _buildTopLine(paper),
+                          style: const TextStyle(
+                            fontSize: 9.35,
+                            height: 1.4,
+                            color: Color(0x82000000),
                           ),
                         ),
-                        const SizedBox(height: 4),
+
+                        const SizedBox(height: 3),
+
+                        // Subject name (large, bold)
                         Text(
-                          '${paper.subject} • ${_formatGrade(paper.grade)} • ${paper.syllabus}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          AppConfig.getSubjectDisplayName(paper.subject),
+                          style: const TextStyle(
+                            fontSize: 17.35,
+                            height: 1.4,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+
+                        // Paper details - Year, Term, Paper, Province
+                        Text(
+                          _buildPaperDetails(paper),
+                          style: const TextStyle(
+                            fontSize: 17.35,
+                            height: 1.4,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(width: 8),
+
+                  // Right side - Small thumbnail image
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    width: 56,
+                    height: 75,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      paper.year.toString(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 4.34,
+                          offset: const Offset(0, 4.34),
+                        ),
+                      ],
+                      image: const DecorationImage(
+                        image: AssetImage(AppConstants.pastPaperThumbnailPath),
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Paper Details
-              Row(
-                children: [
-                  _buildDetailChip(
-                    context,
-                    Icons.access_time,
-                    '${paper.durationMinutes} min',
-                  ),
-                  const SizedBox(width: 8),
-                  if (paper.totalMarks != null)
-                    _buildDetailChip(
-                      context,
-                      Icons.assignment,
-                      '${paper.totalMarks} marks',
-                    ),
-                  const SizedBox(width: 8),
-                  _buildDetailChip(
-                    context,
-                    Icons.school,
-                    _formatExamLevel(paper.examLevel),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Attempt Status Indicators
-              if (!paperAvailability.hasAnyAvailability)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'All attempts used',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )
-              else
-                Row(
-                  children: [
-                    if (!paperAvailability.canStartPractice)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Practice used',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    if (!paperAvailability.canStartPractice &&
-                        !paperAvailability.canStartExam)
-                      const SizedBox(width: 6),
-                    if (!paperAvailability.canStartExam)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Exam used',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
 
               const SizedBox(height: 16),
 
-              // Smart Action Buttons
+              // Bottom Row - Action Buttons
               _buildActionButtons(context, ref, authState, theme),
             ],
           ),
@@ -171,127 +123,183 @@ class PaperCard extends ConsumerWidget {
     );
   }
 
+  String _buildTopLine(dynamic paper) {
+    // Format: Marks • Duration (e.g., "150 marks • 3 hours")
+    final marks = paper.totalMarks != null ? '${paper.totalMarks} marks' : '';
+    final duration = _formatDuration(paper.durationMinutes);
+
+    if (marks.isEmpty) {
+      return duration;
+    }
+
+    return '$marks • $duration';
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes >= 60) {
+      final hours = minutes / 60;
+      if (hours == hours.toInt()) {
+        return '${hours.toInt()} ${hours.toInt() == 1 ? 'hour' : 'hours'}';
+      }
+      return '${hours.toStringAsFixed(1)} hours';
+    }
+    return '$minutes min';
+  }
+
+  String _buildPaperDetails(dynamic paper) {
+    // Format: {year} {examPeriod} {paperType} - {Province Abbreviation}
+    // Example: "2024 November P1 - KZN"
+    final provinceAbbr =
+        AppConfig.getProvinceAbbreviation(paper.province ?? '');
+    final examPeriod = AppConfig.getExamPeriodDisplayName(paper.examPeriod);
+    final paperType = AppConfig.getPaperTypeDisplayName(paper.paperType);
+
+    // Build the string with parts that exist
+    final parts = <String>[];
+    parts.add(paper.year.toString());
+    if (examPeriod.isNotEmpty) parts.add(examPeriod);
+    if (paperType.isNotEmpty) parts.add(paperType);
+
+    final mainPart = parts.join(' ');
+
+    // Add province if available
+    if (provinceAbbr.isNotEmpty) {
+      return '$mainPart - $provinceAbbr';
+    }
+
+    return mainPart;
+  }
+
   Widget _buildActionButtons(
       BuildContext context, WidgetRef ref, dynamic authState, ThemeData theme) {
     if (!authState.isLoggedIn) {
-      return SizedBox(
+      return Container(
         width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => _requireLogin(context),
-          icon: const Icon(Icons.login, size: 18),
-          label: const Text('LOGIN TO START'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: theme.colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.35),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.login, size: 17, color: Colors.black),
+            SizedBox(width: 8),
+            Text(
+              'LOGIN TO START',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    // Show available buttons based on what hasn't been attempted
-    final buttons = <Widget>[];
+    // Determine which buttons to show
+    final showPractice = paperAvailability.canStartPractice;
+    final showExam = paperAvailability.canStartExam;
 
-    if (paperAvailability.canStartPractice) {
-      buttons.add(
-        ElevatedButton.icon(
-          // <-- Remove Expanded here
-          onPressed: () => _startAttempt(
-              context, AttemptConfig.practice(paperAvailability.paper.id)),
-          icon: const Icon(Icons.psychology_outlined, size: 18),
-          label: const Text('START PRACTICE'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.secondaryContainer,
-            foregroundColor: theme.colorScheme.onSecondaryContainer,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+    if (!showPractice && !showExam) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          'All attempts used',
+          style: TextStyle(
+            fontSize: 15.18,
+            color: Colors.black54,
           ),
+          textAlign: TextAlign.center,
         ),
       );
     }
 
-    if (paperAvailability.canStartExam) {
-      if (buttons.isNotEmpty) buttons.add(const SizedBox(width: 12));
-
-      buttons.add(
-        ElevatedButton.icon(
-          // <-- Remove Expanded here
-          onPressed: () => _startAttempt(
-              context,
-              AttemptConfig.exam(paperAvailability.paper.id,
-                  paperAvailability.paper.durationMinutes)),
-          icon: const Icon(Icons.timer_outlined, size: 18),
-          label: const Text('START EXAM'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.tertiaryContainer,
-            foregroundColor: theme.colorScheme.onTertiaryContainer,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-        ),
-      );
-    }
-
-    // If only one button available, make it full width
-    if (buttons.length == 1) {
-      return SizedBox(
-        width: double.infinity,
-        child: buttons.first, // <-- Now this is just an ElevatedButton
-      );
-    }
-
-    // For multiple buttons, wrap them in Expanded within the Row
+    // Two separate rounded button containers
     return Row(
-      children: buttons.map((button) => Expanded(child: button)).toList(),
-    );
-  }
-
-  Widget _buildDetailChip(BuildContext context, IconData icon, String text) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+      children: [
+        if (showPractice)
+          Expanded(
+            child: InkWell(
+              onTap: () => _startAttempt(
+                  context, AttemptConfig.practice(paperAvailability.paper.id)),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(
+                      Icons.psychology_outlined,
+                      size: 17.35,
+                      color: Colors.black,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Start Practice',
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
-      ),
+        if (showPractice && showExam) const SizedBox(width: 12),
+        if (showExam)
+          Expanded(
+            child: InkWell(
+              onTap: () => _startAttempt(
+                  context,
+                  AttemptConfig.exam(paperAvailability.paper.id,
+                      paperAvailability.paper.durationMinutes)),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 17.35,
+                      color: Colors.black,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Start Exam',
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
-  }
-
-  String _formatGrade(String grade) {
-    switch (grade) {
-      case 'GRADE_10':
-        return 'Grade 10';
-      case 'GRADE_11':
-        return 'Grade 11';
-      case 'GRADE_12':
-        return 'Grade 12';
-      default:
-        return grade;
-    }
-  }
-
-  String _formatExamLevel(String level) {
-    switch (level) {
-      case 'TEACHER_MADE':
-        return 'Teacher Made';
-      case 'PROVINCIAL':
-        return 'Provincial';
-      case 'NATIONAL':
-        return 'National';
-      default:
-        return level;
-    }
   }
 
   void _startAttempt(BuildContext context, AttemptConfig config) {

@@ -83,46 +83,18 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Exam Papers',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: theme.colorScheme.surface,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref
-                .read(papersControllerProvider.notifier)
-                .loadPapers(refresh: true),
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Search and Filters
           Container(
             padding: EdgeInsets.fromLTRB(
               isTablet ? 24 : 16,
-              8,
-              isTablet ? 24 : 16,
               16,
+              isTablet ? 24 : 16,
+              4,
             ),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              border: Border(
-                bottom: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
             ),
             child: Column(
               children: [
@@ -133,7 +105,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                         .searchPapers(query);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 PapersFilters(
                   filters: state.filters,
                   activeFilters: state.activeFilters,
@@ -148,39 +120,39 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
           ),
 
           // Pagination Info Bar
-          if (state.paperAvailabilities.isNotEmpty ||
-              (state.totalAvailablePapers == 0 && state.serverTotalCount > 0))
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _getPapersPaginationText(state),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                  if (state.hasNextPage)
-                    Text(
-                      'Page ${state.currentPage} of ${state.totalPages}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          // if (state.paperAvailabilities.isNotEmpty ||
+          //     (state.totalAvailablePapers == 0 && state.serverTotalCount > 0))
+          //   Container(
+          //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     decoration: BoxDecoration(
+          //       color:
+          //           theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          //       border: Border(
+          //         bottom: BorderSide(
+          //           color: theme.colorScheme.outline.withOpacity(0.1),
+          //           width: 1,
+          //         ),
+          //       ),
+          //     ),
+          //     child: Row(
+          //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //       children: [
+          //         Text(
+          //           _getPapersPaginationText(state),
+          //           style: theme.textTheme.bodySmall?.copyWith(
+          //             color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //           ),
+          //         ),
+          //         if (state.hasNextPage)
+          //           Text(
+          //             'Page ${state.currentPage} of ${state.totalPages}',
+          //             style: theme.textTheme.bodySmall?.copyWith(
+          //               color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //             ),
+          //           ),
+          //       ],
+          //     ),
+          //   ),
 
           // Papers List
           Expanded(
@@ -217,50 +189,50 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
     );
   }
 
-  // Updated helper method with messaging about attempted papers:
-  String _getPapersPaginationText(PapersState state) {
-    const pageSize = 10;
-    final totalAvailable = state.totalAvailablePapers;
-    final totalFromServer = state.serverTotalCount;
-    final attemptedCount = totalFromServer - totalAvailable;
+  // // Updated helper method with messaging about attempted papers:
+  // String _getPapersPaginationText(PapersState state) {
+  //   const pageSize = 10;
+  //   final totalAvailable = state.totalAvailablePapers;
+  //   final totalFromServer = state.serverTotalCount;
+  //   final attemptedCount = totalFromServer - totalAvailable;
 
-    final displayedCount = state.paperAvailabilities.length;
+  //   final displayedCount = state.paperAvailabilities.length;
 
-    if (totalAvailable == 0 && attemptedCount > 0) {
-      // All papers have been attempted
-      return state.isOffline
-          ? '$attemptedCount papers attempted - check online for more'
-          : '$attemptedCount papers attempted - more coming soon';
-    }
+  //   if (totalAvailable == 0 && attemptedCount > 0) {
+  //     // All papers have been attempted
+  //     return state.isOffline
+  //         ? '$attemptedCount papers attempted - check online for more'
+  //         : '$attemptedCount papers attempted - more coming soon';
+  //   }
 
-    if (state.activeFilters.isNotEmpty ||
-        (state.searchQuery?.isNotEmpty ?? false)) {
-      // When filters are active
-      if (attemptedCount > 0) {
-        return '$displayedCount available, $attemptedCount attempted (filtered)';
-      }
-      return 'Showing $displayedCount available papers (filtered)';
-    } else {
-      // When no filters, show page range
-      if (totalAvailable <= pageSize) {
-        // Single page
-        if (attemptedCount > 0) {
-          return '$displayedCount available, $attemptedCount already attempted';
-        }
-        return 'Showing $displayedCount available papers';
-      } else {
-        // Multiple pages - show range
-        final startIndex = (state.currentPage - 1) * pageSize + 1;
-        final actualEndIndex =
-            (startIndex + displayedCount - 1).clamp(startIndex, totalAvailable);
+  //   if (state.activeFilters.isNotEmpty ||
+  //       (state.searchQuery?.isNotEmpty ?? false)) {
+  //     // When filters are active
+  //     if (attemptedCount > 0) {
+  //       return '$displayedCount available, $attemptedCount attempted (filtered)';
+  //     }
+  //     return 'Showing $displayedCount available papers (filtered)';
+  //   } else {
+  //     // When no filters, show page range
+  //     if (totalAvailable <= pageSize) {
+  //       // Single page
+  //       if (attemptedCount > 0) {
+  //         return '$displayedCount available, $attemptedCount already attempted';
+  //       }
+  //       return 'Showing $displayedCount available papers';
+  //     } else {
+  //       // Multiple pages - show range
+  //       final startIndex = (state.currentPage - 1) * pageSize + 1;
+  //       final actualEndIndex =
+  //           (startIndex + displayedCount - 1).clamp(startIndex, totalAvailable);
 
-        if (attemptedCount > 0) {
-          return 'Showing $startIndex-$actualEndIndex of $totalAvailable ($attemptedCount attempted)';
-        }
-        return 'Showing $startIndex-$actualEndIndex of $totalAvailable available';
-      }
-    }
-  }
+  //       if (attemptedCount > 0) {
+  //         return 'Showing $startIndex-$actualEndIndex of $totalAvailable ($attemptedCount attempted)';
+  //       }
+  //       return 'Showing $startIndex-$actualEndIndex of $totalAvailable available';
+  //     }
+  //   }
+  // }
 
   Widget _buildEmptyState(ThemeData theme) {
     final state = ref.watch(papersControllerProvider);
@@ -352,12 +324,12 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
   Widget _buildPapersList(PapersState state, ThemeData theme, bool isTablet) {
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.all(isTablet ? 24 : 12),
       itemCount: state.paperAvailabilities.length + (state.hasNextPage ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == state.paperAvailabilities.length) {
           return Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Center(
               child: Column(
                 children: [
@@ -379,9 +351,8 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
 
         final paperAvailability = state.paperAvailabilities[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: PaperCard(
-              paperAvailability: paperAvailability), // Updated parameter
+          padding: const EdgeInsets.only(bottom: 0),
+          child: PaperCard(paperAvailability: paperAvailability), // Updated parameter
         );
       },
     );

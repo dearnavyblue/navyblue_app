@@ -34,13 +34,10 @@ class _PaperSearchBarState extends State<PaperSearchBar> {
     final theme = Theme.of(context);
 
     return Container(
-      height: 48,
+      height: 40,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
-        ),
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8)
       ),
       child: TextField(
         controller: _controller,
@@ -51,9 +48,9 @@ class _PaperSearchBarState extends State<PaperSearchBar> {
             color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
           ),
           prefixIcon: Icon(
-            Icons.search_rounded,
-            size: 20,
-            color: theme.colorScheme.onSurfaceVariant,
+            Icons.search,
+            size: 22,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
           ),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(

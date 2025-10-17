@@ -22,278 +22,152 @@ class _PapersFiltersState extends State<PapersFilters> {
   Widget build(BuildContext context) {
     if (widget.filters == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            // 1. Subject (most important filter)
-            if (widget.filters!.subjects.isNotEmpty) ...[
-              _buildPillDropdown(
-                items: widget.filters!.subjects,
-                value: widget.activeFilters['subject'],
-                hint: 'Subject',
-                displayMapper: _getSubjectDisplay,
-                onChanged: (value) => _updateFilter('subject', value),
-                isPrimary: true,
-              ),
-              const SizedBox(width: 8),
-            ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Grade
+          if (widget.filters!.grades.isNotEmpty) ...[
+            _buildPillDropdown(
+              items: widget.filters!.grades,
+              value: widget.activeFilters['grade'],
+              hint: 'Grade',
+              displayMapper: _getGradeDisplay,
+              onChanged: (value) => _updateFilter('grade', value),
 
-            // 2. Grade (second most important)
-            if (widget.filters!.grades.isNotEmpty) ...[
-              _buildPillDropdown(
-                items: widget.filters!.grades,
-                value: widget.activeFilters['grade'],
-                hint: 'Grade',
-                displayMapper: _getGradeDisplay,
-                onChanged: (value) => _updateFilter('grade', value),
-                isDark: true,
-              ),
-              const SizedBox(width: 8),
-            ],
-
-            // 3. Paper Type (commonly used)
-            if (widget.filters!.paperTypes.isNotEmpty) ...[
-              _buildPillDropdown(
-                items: widget.filters!.paperTypes,
-                value: widget.activeFilters['paperType'],
-                hint: 'Paper',
-                displayMapper: _getPaperTypeDisplay,
-                onChanged: (value) => _updateFilter('paperType', value),
-              ),
-              const SizedBox(width: 8),
-            ],
-
-            // 4. Year
-            if (widget.filters!.years.isNotEmpty) ...[
-              _buildYearPillDropdown(),
-              const SizedBox(width: 8),
-            ],
-
-            // 5. Syllabus (less frequently changed)
-            if (widget.filters!.syllabi.isNotEmpty) ...[
-              _buildPillDropdown(
-                items: widget.filters!.syllabi,
-                value: widget.activeFilters['syllabus'],
-                hint: 'Syllabus',
-                displayMapper: (value) => value,
-                onChanged: (value) => _updateFilter('syllabus', value),
-              ),
-              const SizedBox(width: 8),
-            ],
-
-            // 6. Province (least commonly used, often empty)
-            if (widget.filters!.provinces.isNotEmpty) ...[
-              _buildPillDropdown(
-                items: widget.filters!.provinces,
-                value: widget.activeFilters['province'],
-                hint: 'Province',
-                displayMapper: _getProvinceDisplay,
-                onChanged: (value) => _updateFilter('province', value),
-              ),
-            ],
+              // 👇 make it black with white text & caret (and border)
+              backgroundOverride: Colors.black,
+              textColorOverride: Colors.white,
+              borderColorOverride: Colors.black,
+            ),
+            const SizedBox(width: 8),
           ],
-        ),
+    
+          // 2. Subject
+          if (widget.filters!.subjects.isNotEmpty) ...[
+            _buildPillDropdown(
+              items: widget.filters!.subjects,
+              value: widget.activeFilters['subject'],
+              hint: 'Subject',
+              displayMapper: _getSubjectDisplay,
+              onChanged: (value) => _updateFilter('subject', value),
+            ),
+            const SizedBox(width: 8),
+          ],
+
+          // 3. Paper Type
+          if (widget.filters!.paperTypes.isNotEmpty) ...[
+            _buildPillDropdown(
+              items: widget.filters!.paperTypes,
+              value: widget.activeFilters['paperType'],
+              hint: 'Paper',
+              displayMapper: _getPaperTypeDisplay,
+              onChanged: (value) => _updateFilter('paperType', value),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildPillDropdown({
+Widget _buildPillContent({
+    required String text,
+    required TextStyle labelStyle,
+  }) {
+    return ConstrainedBox(
+      // optional soft cap
+      constraints: const BoxConstraints(maxWidth: 160),
+      child: Text(
+        text,
+        style: labelStyle,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        softWrap: false,
+      ),
+    );
+  }
+
+
+Widget _buildPillDropdown({
     required List<String> items,
     required String? value,
     required String hint,
     required String Function(String) displayMapper,
     required Function(String?) onChanged,
-    bool isDark = false,
-    bool isPrimary = false,
+    // 👇 new (optional)
+    Color? backgroundOverride,
+    Color? textColorOverride,
+    Color? borderColorOverride,
   }) {
     final theme = Theme.of(context);
+    final chipTheme = theme.chipTheme;
     final isSelected = value != null;
 
-    Color backgroundColor;
-    Color textColor;
+    final backgroundColor =
+        backgroundOverride ?? (chipTheme.backgroundColor ?? Colors.white);
+    final borderColor = borderColorOverride ??
+        (chipTheme.side?.color ?? const Color(0xFFE6E6E6));
+    final borderWidth = chipTheme.side?.width ?? 1.0;
+    final borderRadius = (chipTheme.shape as RoundedRectangleBorder?)
+            ?.borderRadius as BorderRadius? ??
+        BorderRadius.circular(20);
 
-    if (isDark) {
-      backgroundColor = theme.colorScheme.onSurface;
-      textColor = theme.colorScheme.surface;
-    } else if (isPrimary) {
-      backgroundColor = theme.colorScheme.primary;
-      textColor = theme.colorScheme.onPrimary;
-    } else {
-      backgroundColor = isSelected
-          ? theme.colorScheme.primaryContainer
-          : theme.colorScheme.surfaceContainerHighest;
-      textColor = isSelected
-          ? theme.colorScheme.onPrimaryContainer
-          : theme.colorScheme.onSurfaceVariant;
-    }
+    // use override if provided; otherwise fall back to theme or black
+    final baseLabelStyle = chipTheme.labelStyle ??
+        const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black);
+    final textColor =
+        textColorOverride ?? (baseLabelStyle.color ?? Colors.black);
+    final labelStyle = baseLabelStyle.copyWith(color: textColor);
 
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      height: 32,
+      padding: chipTheme.padding ??
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: borderWidth),
+        borderRadius: borderRadius,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isSelected ? displayMapper(value) : hint,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: textColor,
-                ),
-              ],
-            ),
+          isExpanded: false,
+          icon: Icon(Icons.expand_more,
+              size: 18, color: textColor), // caret follows text color
+          iconEnabledColor: textColor,
+          iconDisabledColor: textColor,
+          hint: _buildPillContent(
+            text: isSelected ? displayMapper(value!) : hint,
+            labelStyle: labelStyle, // uses textColor
           ),
           selectedItemBuilder: (context) {
             return [null, ...items].map((item) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item != null ? displayMapper(item) : hint,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 16,
-                      color: textColor,
-                    ),
-                  ],
-                ),
+              return _buildPillContent(
+                text: item != null ? displayMapper(item) : hint,
+                labelStyle: labelStyle,
               );
             }).toList();
           },
           items: [
-            DropdownMenuItem<String>(
-              value: null,
-              child: Text('All ${hint}s'),
-            ),
+            const DropdownMenuItem<String>(value: null, child: Text('All')),
             ...items.map((item) => DropdownMenuItem<String>(
                   value: item,
                   child: Text(displayMapper(item)),
                 )),
           ],
           onChanged: onChanged,
-          icon: const SizedBox.shrink(),
           dropdownColor: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          isDense: true,
         ),
       ),
     );
   }
 
-  Widget _buildYearPillDropdown() {
-    final theme = Theme.of(context);
-    final value = widget.activeFilters['year'];
-    final isSelected = value != null;
-
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? theme.colorScheme.primaryContainer
-            : theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: value,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isSelected ? '$value' : 'Year',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: isSelected
-                        ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: isSelected
-                      ? theme.colorScheme.onPrimaryContainer
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-          selectedItemBuilder: (context) {
-            return [null, ...widget.filters!.years].map((year) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      year != null ? '$year' : 'Year',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: isSelected
-                            ? theme.colorScheme.onPrimaryContainer
-                            : theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 16,
-                      color: isSelected
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
-              );
-            }).toList();
-          },
-          items: [
-            const DropdownMenuItem<int>(
-              value: null,
-              child: Text('All Years'),
-            ),
-            ...widget.filters!.years.map((year) => DropdownMenuItem<int>(
-                  value: year,
-                  child: Text('$year'),
-                )),
-          ],
-          onChanged: (value) => _updateFilter('year', value),
-          icon: const SizedBox.shrink(),
-          dropdownColor: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
-  }
 
   void _updateFilter(String key, dynamic value) {
     final newFilters = Map<String, dynamic>.from(widget.activeFilters);
@@ -319,11 +193,11 @@ class _PapersFiltersState extends State<PapersFilters> {
   String _getGradeDisplay(String grade) {
     switch (grade) {
       case 'GRADE_10':
-        return '10';
+        return 'Gr 10';
       case 'GRADE_11':
-        return '11';
+        return 'Gr 11';
       case 'GRADE_12':
-        return '12';
+        return 'Gr 12';
       default:
         return grade.replaceAll('GRADE_', '');
     }
