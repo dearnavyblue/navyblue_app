@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:navyblue_app/core/theme/app_theme.dart';
 import '../../../attempts/domain/entities/attempt_config.dart';
 import '../../../auth/presentation/providers/auth_presentation_providers.dart';
+import '../../../attempts/presentation/providers/attempts_presentation_providers.dart';
 import '../controllers/papers_controller.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -173,27 +174,31 @@ class PaperCard extends ConsumerWidget {
   Widget _buildActionButtons(
       BuildContext context, WidgetRef ref, dynamic authState, ThemeData theme) {
     if (!authState.isLoggedIn) {
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.login, size: 17, color: Colors.black),
-            SizedBox(width: 8),
-            Text(
-              'LOGIN TO START',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
+      return InkWell(
+        onTap: () => _requireLogin(context),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.login, size: 17, color: Colors.black),
+              SizedBox(width: 8),
+              Text(
+                'LOGIN TO START',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -226,12 +231,11 @@ class PaperCard extends ConsumerWidget {
         if (showPractice)
           Expanded(
             child: InkWell(
-              onTap: () => _startAttempt(
-                  context, AttemptConfig.practice(paperAvailability.paper.id)),
+              onTap: () => _startAttempt(context, ref,
+                  AttemptConfig.practice(paperAvailability.paper.id)),
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -265,12 +269,12 @@ class PaperCard extends ConsumerWidget {
             child: InkWell(
               onTap: () => _startAttempt(
                   context,
+                  ref,
                   AttemptConfig.exam(paperAvailability.paper.id,
                       paperAvailability.paper.durationMinutes)),
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -302,9 +306,24 @@ class PaperCard extends ConsumerWidget {
     );
   }
 
-  void _startAttempt(BuildContext context, AttemptConfig config) {
-    context.push(
+  // CRITICAL: Updated to await navigation and refresh on return
+  Future<void> _startAttempt(
+      BuildContext context, WidgetRef ref, AttemptConfig config) async {
+    print('=== STARTING ATTEMPT ===');
+    print('Paper ID: ${paperAvailability.paper.id}');
+    print('Mode: ${config.mode}');
+
+    // Navigate and wait for return
+    await context.push(
         '/attempt/${paperAvailability.paper.id}?mode=${config.mode.toLowerCase()}');
+
+    // When we return, refresh the attempts list
+    print('=== RETURNED FROM ATTEMPT ===');
+    if (context.mounted) {
+      print('Refreshing attempts after return...');
+      await ref.read(userAttemptsControllerProvider.notifier).refreshAttempts();
+      print('Attempts refreshed');
+    }
   }
 
   void _requireLogin(BuildContext context) {

@@ -1,10 +1,9 @@
 // lib/features/papers/presentation/controllers/papers_controller.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:navyblue_app/core/providers/connectivity_providers.dart';
-import 'package:navyblue_app/core/services/connectivity_service.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
 import '../../../../brick/models/exam_paper.model.dart';
-import '../../../../brick/models/paper_filters.model.dart'; // Import the new brick model
+import '../../../../brick/models/paper_filters.model.dart';
 import '../../domain/providers/papers_use_case_providers.dart';
 import '../../../../brick/repository.dart';
 
@@ -29,7 +28,7 @@ class PaperAvailability {
 
 class PapersState {
   final List<PaperAvailability> paperAvailabilities;
-  final PaperFilters? filters; // Using the brick model now
+  final PaperFilters? filters;
   final bool isLoading;
   final bool isLoadingMore;
   final bool isLoadingFilters;
@@ -60,7 +59,6 @@ class PapersState {
     this.serverTotalCount = 0,
   });
 
-  // Backward compatibility getter
   List<ExamPaper> get papers =>
       paperAvailabilities.map((pa) => pa.paper).toList();
 
@@ -138,13 +136,8 @@ class PapersController extends StateNotifier<PapersState> {
   void _setupConnectivityListener() {
     _ref.listen(connectivityProvider, (previous, next) {
       next.whenData((isOnline) {
-        // Check if we're transitioning from offline to online BEFORE updating state
         final wasOffline = state.isOffline;
-
-        // Always sync state with connectivity
         state = state.copyWith(isOffline: !isOnline);
-
-        // Sync when coming back online (transitioning from offline to online)
         if (isOnline && wasOffline) {
           syncWhenOnline();
         }
@@ -158,58 +151,67 @@ class PapersController extends StateNotifier<PapersState> {
     final attemptsState = _ref.read(userAttemptsControllerProvider);
 
     if (attemptsState.userAttempts.isEmpty && !attemptsState.isInitialized) {
-      print('Loading user attempts before filtering papers...');
       await attemptsController.loadUserAttempts();
     }
   }
 
   Future<void> _loadPapersFromLocal(bool refresh) async {
     try {
-      final localPapers = await _repository.get<ExamPaper>();
-      final attemptsState = _ref.read(userAttemptsControllerProvider);
+      // OPTIMIZATION: Load data in parallel
+      final results = await Future.wait([
+        _repository.get<ExamPaper>(),
+        Future.value(_ref.read(userAttemptsControllerProvider)),
+      ]);
 
-      // Count attempts by paper and mode
+      final localPapers = results[0] as List<ExamPaper>;
+      final attemptsState = results[1] as dynamic;
+
+      // OPTIMIZATION: Build attempt counts map once
       final attemptCounts = <String, Map<String, int>>{};
       for (final attempt in attemptsState.userAttempts) {
         final paperId = attempt.paperId;
         final mode = attempt.mode;
-
-        if (!attemptCounts.containsKey(paperId)) {
-          attemptCounts[paperId] = {'PRACTICE': 0, 'EXAM': 0};
-        }
-
+        attemptCounts.putIfAbsent(paperId, () => {'PRACTICE': 0, 'EXAM': 0});
         attemptCounts[paperId]![mode] =
             (attemptCounts[paperId]![mode] ?? 0) + 1;
       }
 
-      print(
-          'Local papers: ${localPapers.length}, Attempts: ${attemptsState.userAttempts.length}');
-
-      // Create paper availabilities for ALL papers that match filters
+      // OPTIMIZATION: Process in batches to avoid blocking UI
+      const batchSize = 50;
       final allPaperAvailabilities = <PaperAvailability>[];
 
-      for (final paper in localPapers) {
-        if (!_matchesFilters(paper)) continue;
+      for (int i = 0; i < localPapers.length; i += batchSize) {
+        final endIndex = (i + batchSize).clamp(0, localPapers.length);
+        final batch = localPapers.sublist(i, endIndex);
 
-        final counts = attemptCounts[paper.id] ?? {'PRACTICE': 0, 'EXAM': 0};
-        final practiceAttempts = counts['PRACTICE'] ?? 0;
-        final examAttempts = counts['EXAM'] ?? 0;
+        for (final paper in batch) {
+          if (!_matchesFilters(paper)) continue;
 
-        final canStartPractice = practiceAttempts < 1;
-        final canStartExam = examAttempts < 1;
+          final counts = attemptCounts[paper.id] ?? {'PRACTICE': 0, 'EXAM': 0};
+          final practiceAttempts = counts['PRACTICE'] ?? 0;
+          final examAttempts = counts['EXAM'] ?? 0;
 
-        if (canStartPractice || canStartExam) {
-          allPaperAvailabilities.add(PaperAvailability(
-            paper: paper,
-            canStartPractice: canStartPractice,
-            canStartExam: canStartExam,
-            practiceAttempts: practiceAttempts,
-            examAttempts: examAttempts,
-          ));
+          final canStartPractice = practiceAttempts < 1;
+          final canStartExam = examAttempts < 1;
+
+          if (canStartPractice || canStartExam) {
+            allPaperAvailabilities.add(PaperAvailability(
+              paper: paper,
+              canStartPractice: canStartPractice,
+              canStartExam: canStartExam,
+              practiceAttempts: practiceAttempts,
+              examAttempts: examAttempts,
+            ));
+          }
+        }
+
+        // OPTIMIZATION: Yield to UI thread between batches
+        if (i + batchSize < localPapers.length) {
+          await Future.delayed(Duration.zero);
         }
       }
 
-      // Sort all available papers
+      // OPTIMIZATION: Sort once at the end
       allPaperAvailabilities
           .sort((a, b) => b.paper.year.compareTo(a.paper.year));
 
@@ -227,9 +229,6 @@ class PapersController extends StateNotifier<PapersState> {
       final combinedAvailabilities = refresh
           ? pageAvailabilities
           : [...state.paperAvailabilities, ...pageAvailabilities];
-
-      print(
-          'Available opportunities: $totalAvailable (showing ${pageAvailabilities.length} on page ${refresh ? 1 : state.currentPage})');
 
       state = state.copyWith(
         paperAvailabilities: combinedAvailabilities,
@@ -256,15 +255,12 @@ class PapersController extends StateNotifier<PapersState> {
       final getPapersUseCase = _ref.read(getPapersUseCaseProvider);
 
       if (refresh) {
-        // For refresh, get ALL papers first for deletion sync
-        print('Refresh detected - syncing paper deletions...');
-        final allPapersResult = await getPapersUseCase(); // No params = get all
+        final allPapersResult = await getPapersUseCase();
         if (allPapersResult.isSuccess) {
           await _syncPaperDeletions(allPapersResult.data!.papers);
         }
       }
 
-      // Then get the filtered/paginated results
       final result = await getPapersUseCase(
         subject: state.activeFilters['subject'],
         grade: state.activeFilters['grade'],
@@ -283,28 +279,21 @@ class PapersController extends StateNotifier<PapersState> {
       if (result.isSuccess) {
         final response = result.data!;
 
-        // Save papers to local storage
-        for (final paper in response.papers) {
-          await _repository.upsert<ExamPaper>(paper);
-        }
+        // OPTIMIZATION: Save papers in parallel
+        await Future.wait(response.papers
+            .map((paper) => _repository.upsert<ExamPaper>(paper)));
 
-        // Get user attempts to filter available papers
         final attemptsState = _ref.read(userAttemptsControllerProvider);
         final attemptCounts = <String, Map<String, int>>{};
 
         for (final attempt in attemptsState.userAttempts) {
           final paperId = attempt.paperId;
           final mode = attempt.mode;
-
-          if (!attemptCounts.containsKey(paperId)) {
-            attemptCounts[paperId] = {'PRACTICE': 0, 'EXAM': 0};
-          }
-
+          attemptCounts.putIfAbsent(paperId, () => {'PRACTICE': 0, 'EXAM': 0});
           attemptCounts[paperId]![mode] =
               (attemptCounts[paperId]![mode] ?? 0) + 1;
         }
 
-        // Filter papers for availability and create PaperAvailability objects
         final newAvailabilities = <PaperAvailability>[];
 
         for (final paper in response.papers) {
@@ -326,12 +315,10 @@ class PapersController extends StateNotifier<PapersState> {
           }
         }
 
-        // For refresh, replace all availabilities; for load more, append
         final finalAvailabilities = refresh
             ? newAvailabilities
             : [...state.paperAvailabilities, ...newAvailabilities];
 
-        // Estimate total available papers based on availability ratio
         final availabilityRatio = response.papers.isNotEmpty
             ? newAvailabilities.length / response.papers.length
             : 1.0;
@@ -350,9 +337,6 @@ class PapersController extends StateNotifier<PapersState> {
           isLoadingMore: false,
           isOffline: false,
         );
-
-        print(
-            'Server sync: ${response.papers.length} papers, ${newAvailabilities.length} available');
       } else {
         state = state.copyWith(
           isLoading: false,
@@ -370,21 +354,19 @@ class PapersController extends StateNotifier<PapersState> {
   Future<void> _syncPaperDeletions(List<ExamPaper> serverPapers) async {
     try {
       final localPapers = await _repository.get<ExamPaper>();
-      final serverPaperIds = serverPapers.map((p) => p.id).toSet();
+      final serverPaperIds = {for (var p in serverPapers) p.id};
 
       final papersToDelete = localPapers
           .where((local) => !serverPaperIds.contains(local.id))
           .toList();
 
-      for (final paper in papersToDelete) {
-        await _repository.delete<ExamPaper>(paper);
-      }
-
-      print(
-          'PapersController: Deleted ${papersToDelete.length} papers from local storage');
-
-      // If we deleted papers, refresh the current state
+      // OPTIMIZATION: Delete in parallel
       if (papersToDelete.isNotEmpty) {
+        await Future.wait(papersToDelete
+            .map((paper) => _repository.delete<ExamPaper>(paper)));
+
+        print(
+            'PapersController: Deleted ${papersToDelete.length} papers from local storage');
         await _refreshPaperAvailabilities();
       }
     } catch (e) {
@@ -394,18 +376,20 @@ class PapersController extends StateNotifier<PapersState> {
 
   Future<void> _refreshPaperAvailabilities() async {
     try {
-      final localPapers = await _repository.get<ExamPaper>();
-      final attemptsState = _ref.read(userAttemptsControllerProvider);
+      // OPTIMIZATION: Load data in parallel
+      final results = await Future.wait([
+        _repository.get<ExamPaper>(),
+        Future.value(_ref.read(userAttemptsControllerProvider)),
+      ]);
 
-      // Recalculate availabilities after deletion
+      final localPapers = results[0] as List<ExamPaper>;
+      final attemptsState = results[1] as dynamic;
+
       final attemptCounts = <String, Map<String, int>>{};
       for (final attempt in attemptsState.userAttempts) {
         final paperId = attempt.paperId;
         final mode = attempt.mode;
-
-        if (!attemptCounts.containsKey(paperId)) {
-          attemptCounts[paperId] = {'PRACTICE': 0, 'EXAM': 0};
-        }
+        attemptCounts.putIfAbsent(paperId, () => {'PRACTICE': 0, 'EXAM': 0});
         attemptCounts[paperId]![mode] =
             (attemptCounts[paperId]![mode] ?? 0) + 1;
       }
@@ -472,30 +456,23 @@ class PapersController extends StateNotifier<PapersState> {
       final result = await searchUseCase(query: query, page: 1, limit: 10);
 
       if (result.isSuccess) {
-        final response = result.data!; // This is PapersResponse
+        final response = result.data!;
 
-        // Save papers to local storage
-        for (final paper in response.papers) {
-          await _repository.upsert<ExamPaper>(paper);
-        }
+        // OPTIMIZATION: Save papers in parallel
+        await Future.wait(response.papers
+            .map((paper) => _repository.upsert<ExamPaper>(paper)));
 
-        // Get user attempts for filtering
         final attemptsState = _ref.read(userAttemptsControllerProvider);
         final attemptCounts = <String, Map<String, int>>{};
 
         for (final attempt in attemptsState.userAttempts) {
           final paperId = attempt.paperId;
           final mode = attempt.mode;
-
-          if (!attemptCounts.containsKey(paperId)) {
-            attemptCounts[paperId] = {'PRACTICE': 0, 'EXAM': 0};
-          }
-
+          attemptCounts.putIfAbsent(paperId, () => {'PRACTICE': 0, 'EXAM': 0});
           attemptCounts[paperId]![mode] =
               (attemptCounts[paperId]![mode] ?? 0) + 1;
         }
 
-        // Filter for available papers
         final filteredAvailabilities = <PaperAvailability>[];
 
         for (final paper in response.papers) {
@@ -517,7 +494,6 @@ class PapersController extends StateNotifier<PapersState> {
           }
         }
 
-        // Estimate available total based on current results
         final availabilityRatio = response.papers.isNotEmpty
             ? filteredAvailabilities.length / response.papers.length
             : 1.0;
@@ -534,18 +510,11 @@ class PapersController extends StateNotifier<PapersState> {
           isLoading: false,
           isOffline: false,
         );
-
-        print(
-            'Search results: ${response.totalCount} total, ${filteredAvailabilities.length} available');
       } else {
-        state = state.copyWith(
-          isLoading: false,
-        );
+        state = state.copyWith(isLoading: false);
       }
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-      );
+      state = state.copyWith(isLoading: false);
     }
   }
 
@@ -604,15 +573,11 @@ class PapersController extends StateNotifier<PapersState> {
     return true;
   }
 
-  // NEW: Offline-first filter loading method
   Future<void> loadFilterOptions() async {
     state = state.copyWith(isLoadingFilters: true, error: null);
 
     try {
-      // First, try to load from local storage
       await _loadFiltersFromLocal();
-
-      // Then sync with server in background
       _syncFiltersWithServer();
     } catch (e) {
       print('Error loading filters: $e');
@@ -623,14 +588,11 @@ class PapersController extends StateNotifier<PapersState> {
     }
   }
 
-  // Load filters from local storage
   Future<void> _loadFiltersFromLocal() async {
     try {
-      // Try to get cached filters first
       final cachedFilters = await _repository.get<PaperFilters>();
 
       if (cachedFilters.isNotEmpty) {
-        // Use the most recent cached filters
         final latestFilters = cachedFilters
             .reduce((a, b) => a.lastSyncedAt.isAfter(b.lastSyncedAt) ? a : b);
 
@@ -642,7 +604,6 @@ class PapersController extends StateNotifier<PapersState> {
         return;
       }
 
-      // If no cached filters, generate from local papers
       final localPapers = await _repository.get<ExamPaper>();
 
       if (localPapers.isNotEmpty) {
@@ -650,7 +611,6 @@ class PapersController extends StateNotifier<PapersState> {
         final generatedFilters =
             await PaperFilters.generateFromPapers(localPapers);
 
-        // Save the generated filters for future use
         await _repository.upsert<PaperFilters>(generatedFilters);
 
         state = state.copyWith(
@@ -658,7 +618,6 @@ class PapersController extends StateNotifier<PapersState> {
           isLoadingFilters: false,
         );
       } else {
-        // No papers available, create empty filters
         final emptyFilters = PaperFilters(
           id: 'empty_filters',
           subjects: [],
@@ -679,13 +638,10 @@ class PapersController extends StateNotifier<PapersState> {
       }
     } catch (e) {
       print('Error loading filters from local: $e');
-      state = state.copyWith(
-        isLoadingFilters: false,
-      );
+      state = state.copyWith(isLoadingFilters: false);
     }
   }
 
-  // Sync filters with server
   Future<void> _syncFiltersWithServer() async {
     if (state.isOffline) return;
 
@@ -695,9 +651,8 @@ class PapersController extends StateNotifier<PapersState> {
       final result = await getFilterOptionsUseCase();
 
       if (result.isSuccess) {
-        final serverFilters = result.data!; // This is domain.PaperFilters
+        final serverFilters = result.data!;
 
-        // Convert domain filters to brick model
         final brickFilters = PaperFilters(
           id: 'server_filters_${DateTime.now().millisecondsSinceEpoch}',
           subjects: serverFilters.subjects,
@@ -706,15 +661,13 @@ class PapersController extends StateNotifier<PapersState> {
           years: serverFilters.years,
           paperTypes: serverFilters.paperTypes,
           provinces: serverFilters.provinces,
-          examPeriods: [], // Add if available in domain model
-          examLevels: [], // Add if available in domain model
+          examPeriods: [],
+          examLevels: [],
           updatedAt: DateTime.now(),
         );
 
-        // Save to local storage
         await _repository.upsert<PaperFilters>(brickFilters);
 
-        // Update state with server filters
         state = state.copyWith(
           filters: brickFilters,
           isLoadingFilters: false,
@@ -724,21 +677,14 @@ class PapersController extends StateNotifier<PapersState> {
         print('Synced filters with server successfully');
       } else {
         print('Failed to sync filters with server: ${result.error}');
-        // Keep using local filters
-        state = state.copyWith(
-          isLoadingFilters: false,
-        );
+        state = state.copyWith(isLoadingFilters: false);
       }
     } catch (e) {
       print('Error syncing filters with server: $e');
-      // Keep using local filters
-      state = state.copyWith(
-        isLoadingFilters: false,
-      );
+      state = state.copyWith(isLoadingFilters: false);
     }
   }
 
-  // Refresh filters when papers are updated
   Future<void> refreshFiltersFromPapers() async {
     try {
       final localPapers = await _repository.get<ExamPaper>();
@@ -747,9 +693,7 @@ class PapersController extends StateNotifier<PapersState> {
         final updatedFilters =
             await PaperFilters.generateFromPapers(localPapers);
 
-        // Save the updated filters
         await _repository.upsert<PaperFilters>(updatedFilters);
-
         state = state.copyWith(filters: updatedFilters);
 
         print('Refreshed filters from ${localPapers.length} papers');
@@ -776,21 +720,19 @@ class PapersController extends StateNotifier<PapersState> {
   Future<void> syncWhenOnline() async {
     if (state.isOffline) {
       await loadPapers(refresh: true);
-      await loadFilterOptions(); // Also refresh filters when coming back online
+      await loadFilterOptions();
     }
   }
 
-  // Helper method to check if filters need refreshing
   bool shouldRefreshFilters() {
     if (state.filters == null) return true;
 
     final hoursSinceLastSync =
         DateTime.now().difference(state.filters!.lastSyncedAt).inHours;
 
-    return hoursSinceLastSync > 24; // Refresh filters daily
+    return hoursSinceLastSync > 24;
   }
 
-  // Call this method when papers are updated to keep filters in sync
   Future<void> onPapersUpdated() async {
     await refreshFiltersFromPapers();
   }

@@ -9,10 +9,13 @@ class SolutionStep extends OfflineFirstWithRestModel {
   @Rest(name: 'id')
   final String id;
 
-  // Make both optional to support dual ownership
+  // OPTIMIZATION: Index partId for filtering steps by question part
+  @Sqlite(index: true)
   @Rest(name: 'partId')
   final String? partId;
 
+  // OPTIMIZATION: Index questionId for filtering steps by question
+  @Sqlite(index: true)
   @Rest(name: 'questionId')
   final String? questionId;
 
@@ -34,6 +37,8 @@ class SolutionStep extends OfflineFirstWithRestModel {
   @Rest(name: 'teachingNote')
   final String? teachingNote;
 
+  // OPTIMIZATION: Index orderIndex for sorting steps
+  @Sqlite(index: true)
   @Rest(name: 'orderIndex')
   final int orderIndex;
 
@@ -44,11 +49,11 @@ class SolutionStep extends OfflineFirstWithRestModel {
   final DateTime createdAt;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -58,8 +63,8 @@ class SolutionStep extends OfflineFirstWithRestModel {
 
   SolutionStep({
     required this.id,
-    this.partId, // Make optional
-    this.questionId, // Add this
+    this.partId,
+    this.questionId,
     required this.stepNumber,
     required this.description,
     this.workingOut,
@@ -74,14 +79,18 @@ class SolutionStep extends OfflineFirstWithRestModel {
     this.deviceInfo,
   }) : lastSyncedAt = lastSyncedAt ?? DateTime.now();
 
-  // Add helper methods
+  // Helper methods
   bool get belongsToPart => partId != null;
   bool get belongsToQuestion => questionId != null;
+  bool get hasImages => solutionImages.isNotEmpty;
+  bool get hasWorkingOut => workingOut != null && workingOut!.isNotEmpty;
+  bool get hasTeachingNote => teachingNote != null && teachingNote!.isNotEmpty;
+  bool get hasMarks => marksForThisStep != null && marksForThisStep! > 0;
 
   SolutionStep copyWith({
     String? id,
     String? partId,
-    String? questionId, // Add this
+    String? questionId,
     int? stepNumber,
     String? description,
     String? workingOut,
@@ -98,7 +107,7 @@ class SolutionStep extends OfflineFirstWithRestModel {
     return SolutionStep(
       id: id ?? this.id,
       partId: partId ?? this.partId,
-      questionId: questionId ?? this.questionId, // Add this
+      questionId: questionId ?? this.questionId,
       stepNumber: stepNumber ?? this.stepNumber,
       description: description ?? this.description,
       workingOut: workingOut ?? this.workingOut,
@@ -117,8 +126,8 @@ class SolutionStep extends OfflineFirstWithRestModel {
   factory SolutionStep.fromJson(Map<String, dynamic> json) {
     return SolutionStep(
       id: json['id'] ?? '',
-      partId: json['partId'], // Can be null now
-      questionId: json['questionId'], // Add this
+      partId: json['partId'],
+      questionId: json['questionId'],
       stepNumber: json['stepNumber'] ?? 1,
       description: json['description'] ?? '',
       workingOut: json['workingOut'],
@@ -137,7 +146,7 @@ class SolutionStep extends OfflineFirstWithRestModel {
     return {
       'id': id,
       'partId': partId,
-      'questionId': questionId, // Add this
+      'questionId': questionId,
       'stepNumber': stepNumber,
       'description': description,
       'workingOut': workingOut,

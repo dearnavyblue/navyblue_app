@@ -2,10 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navyblue_app/brick/models/student_attempt.model.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
+import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
+import 'dart:async';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +20,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   bool _hasLoadedOnce = false;
+  String? _selectedSubject;
+  int _lastAttemptCount = 0;
+  DateTime? _lastRefreshTime;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -30,24 +37,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // Detect when app comes back to foreground
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && _hasLoadedOnce) {
-      // Refresh data when user returns to app
-      _loadDashboardData();
+      // OPTIMIZATION: Only refresh if it's been more than 30 seconds
+      final now = DateTime.now();
+      if (_lastRefreshTime == null ||
+          now.difference(_lastRefreshTime!) > const Duration(seconds: 30)) {
+        _loadDashboardData();
+        _lastRefreshTime = now;
+      }
     }
   }
 
-  // Load dashboard data and track that we've loaded once
   void _loadDashboardData() {
-    ref.read(homeControllerProvider.notifier).loadDashboardData();
-    _hasLoadedOnce = true;
+    ref.read(homeControllerProvider.notifier).loadDashboardData().then((_) {
+      if (mounted) {
+        setState(() {
+          _hasLoadedOnce = true;
+          _lastRefreshTime = DateTime.now();
+        });
+      }
+    });
   }
 
   @override
@@ -56,24 +73,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final authState = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
 
+    // OPTIMIZATION: Debounced listener for attempt changes
+    ref.listen(userAttemptsControllerProvider, (previous, next) {
+      if (previous != null &&
+          previous.userAttempts.length != next.userAttempts.length &&
+          next.userAttempts.length != _lastAttemptCount) {
+        _lastAttemptCount = next.userAttempts.length;
+
+        // Cancel existing timer
+        _debounceTimer?.cancel();
+
+        // Debounce refresh by 500ms
+        _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (mounted && _lastAttemptCount == next.userAttempts.length) {
+            ref.read(homeControllerProvider.notifier).loadDashboardData();
+          }
+        });
+      }
+    });
+
+    // Set default selected subject if none is selected
+    if (_selectedSubject == null && state.progressSummary != null) {
+      _selectedSubject = state.progressSummary!.subjects.keys.first;
+    }
+
+    final isInitialLoading =
+        !_hasLoadedOnce || (state.isLoading && !state.hasData);
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(homeControllerProvider.notifier).refreshData(),
+        onRefresh: () async {
+          _lastRefreshTime = DateTime.now();
+          await ref.read(homeControllerProvider.notifier).refreshData();
+        },
         child: CustomScrollView(
           slivers: [
-            if ((state.isLoading && !state.hasData) ||
-                state.activeAttempts.isEmpty && !_hasLoadedOnce)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+            if (isInitialLoading)
+              SliverFillRemaining(
+                child: _buildSkeletonLoader(theme),
               )
             else if (state.error != null)
               _buildErrorSliver(theme, state.error!)
             else
               SliverList(
                 delegate: SliverChildListDelegate([
-                  // Simple greeting header with refresh button
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -90,33 +134,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           IconButton(
                             icon: const Icon(Icons.refresh),
-                            onPressed: _loadDashboardData,
+                            onPressed: () {
+                              _lastRefreshTime = DateTime.now();
+                              _loadDashboardData();
+                            },
                             tooltip: 'Refresh',
                           ),
                         ],
                       ),
                     ),
                   ),
-
-                  // Quick Actions
                   _buildQuickActions(context, theme, state),
-
                   const SizedBox(height: 24),
-
-                  // Main content based on hasData
                   if (state.hasData)
                     _buildProgressOverview(theme, state)
                   else
                     _buildGetStartedSection(context, theme),
-
                   const SizedBox(height: 24),
-
-                  // Recent Activity
                   _buildActivitySection(context, theme, state),
-
                   const SizedBox(height: 100),
                 ]),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // OPTIMIZATION: Skeleton loader for better perceived performance
+  Widget _buildSkeletonLoader(ThemeData theme) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 60),
+        _buildSkeletonCard(theme, height: 120),
+        const SizedBox(height: 16),
+        _buildSkeletonCard(theme, height: 160),
+        const SizedBox(height: 16),
+        _buildSkeletonCard(theme, height: 120),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonCard(ThemeData theme, {required double height}) {
+    return Card(
+      child: Container(
+        height: height,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 150,
+              height: 16,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              height: 12,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -148,13 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         icon: Icons.play_circle_fill_rounded,
                         title: 'Resume Study',
                         subtitle: '${state.activeAttempts.length} active',
-                        onTap: () async {
-                          await context.push('/user-attempts');
-                          // Refresh when returning from user attempts
-                          if (mounted) {
-                            _loadDashboardData();
-                          }
-                        },
+                        onTap: () => context.push('/user-attempts'),
                         isPrimary: true,
                       )
                     : _buildActionCard(
@@ -184,13 +278,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         icon: Icons.history_rounded,
                         title: 'Past Attempts',
                         subtitle: 'View history',
-                        onTap: () async {
-                          await context.push('/user-attempts');
-                          // Refresh when returning from user attempts
-                          if (mounted) {
-                            _loadDashboardData();
-                          }
-                        },
+                        onTap: () => context.push('/user-attempts'),
                       ),
               ),
             ],
@@ -318,155 +406,272 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildProgressOverview(ThemeData theme, HomeState state) {
+    if (state.progressSummary == null) return const SizedBox.shrink();
+
+    final subjects = state.progressSummary!.subjects;
+    final selectedProgress =
+        _selectedSubject != null ? subjects[_selectedSubject] : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           Text(
-            'Your Progress',
+            'Exam Readiness',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 12),
-          ...state.progressSummary!.subjects.entries.map((entry) {
-            final subject = entry.key;
-            final progress = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildSubjectProgressCard(theme, subject, progress),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubjectProgressCard(ThemeData theme, String subject, progress) {
-    final readinessColor = _getReadinessColor(theme, progress.readinessLevel);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    AppConfig.getSubjectDisplayName(subject),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: readinessColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    progress.readinessLevel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: readinessColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: progress.overallReadiness / 100,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(readinessColor),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${progress.overallReadiness}% Ready',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPerformanceChip(
-                    theme,
-                    'Practice',
-                    '${progress.practicePerformance.averageScore.toInt()}%',
-                    '${progress.practicePerformance.attempts} attempts',
-                    Icons.psychology_outlined,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildPerformanceChip(
-                    theme,
-                    'Exam',
-                    '${progress.examPerformance.averageScore.toInt()}%',
-                    '${progress.examPerformance.attempts} attempts',
-                    Icons.timer_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPerformanceChip(
-    ThemeData theme,
-    String label,
-    String score,
-    String attempts,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 4),
           Text(
-            score,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            attempts,
-            style: theme.textTheme.bodySmall?.copyWith(
+            'See how ready you are for the exams',
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 16),
+
+          // Subject Tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: subjects.keys.map((subject) {
+                final isSelected = subject == _selectedSubject;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedSubject = subject;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Text(
+                        AppConfig.getSubjectDisplayName(subject),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isSelected
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Selected Subject Content
+          if (selectedProgress != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Subject Header with Status Badge and % Ready
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Text(
+                                AppConfig.getSubjectDisplayName(
+                                    _selectedSubject!),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${selectedProgress.overallReadiness}% Ready',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getReadinessColor(
+                                theme, selectedProgress.readinessLevel),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            selectedProgress.readinessLevel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Overall Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: selectedProgress.overallReadiness / 100,
+                        minHeight: 8,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation(
+                          selectedProgress.overallReadiness > 0
+                              ? _getReadinessColor(
+                                  theme, selectedProgress.readinessLevel)
+                              : theme.colorScheme.outline,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Papers Section - Always show Paper 1 and Paper 2
+                    Row(
+                      children: [
+                        // Paper 1
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 1',
+                            selectedProgress.practicePerformance.averageScore,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Paper 2
+                        Expanded(
+                          child: _buildPaperProgress(
+                            theme,
+                            'Paper 2',
+                            selectedProgress.examPerformance.averageScore,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Topics Breakdown
+                    if (selectedProgress
+                        .practicePerformance.topicBreakdown.isNotEmpty) ...[
+                      ...selectedProgress.practicePerformance.topicBreakdown
+                          .map((topic) {
+                        final topicAccuracy = topic.overallAccuracy;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Topic name with % Ready
+                              Row(
+                                children: [
+                                  Text(
+                                    topic.topic,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${topicAccuracy.toInt()}% Ready',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: topicAccuracy / 100,
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    topicAccuracy > 0
+                                        ? _getReadinessColor(
+                                            theme, topic.status)
+                                        : theme.colorScheme.outline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPaperProgress(ThemeData theme, String paperName, double score) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              paperName,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${score.toInt()}% Ready',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: score / 100,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation(
+              score > 0
+                  ? _getReadinessColor(
+                      theme, _getReadinessLevelFromScore(score))
+                  : Colors.grey[300]!,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -501,13 +706,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             }),
             if (state.activeAttempts.length > 3)
               TextButton(
-                onPressed: () async {
-                  await context.push('/user-attempts');
-                  // Refresh when returning from user attempts
-                  if (mounted) {
-                    _loadDashboardData();
-                  }
-                },
+                onPressed: () => context.push('/user-attempts'),
                 child: Text('View all ${state.activeAttempts.length} attempts'),
               ),
           ] else ...[
@@ -519,19 +718,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildActiveAttemptCard(
-      BuildContext context, ThemeData theme, attempt) {
+      BuildContext context, ThemeData theme, StudentAttempt attempt) {
     final isExam = attempt.mode == 'EXAM';
     final timeElapsed = DateTime.now().difference(attempt.startedAt);
 
     return Card(
       child: InkWell(
-        onTap: () async {
-          await context.push('/user-attempts');
-          // Refresh when returning from user attempts
-          if (mounted) {
-            _loadDashboardData();
-          }
-        },
+        onTap: () => context.push('/user-attempts'),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -684,7 +877,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Colors.blue;
       case 'fair':
         return Colors.orange;
-      case 'poor':
       case 'needs work':
         return Colors.red;
       default:
@@ -697,5 +889,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (duration.inHours > 0) return '${duration.inHours}h';
     if (duration.inMinutes > 0) return '${duration.inMinutes}m';
     return 'now';
+  }
+
+  String _getReadinessLevelFromScore(double score) {
+    if (score >= 80) return 'Excellent';
+    if (score >= 65) return 'Good';
+    if (score >= 50) return 'Fair';
+    return 'Needs Work';
   }
 }

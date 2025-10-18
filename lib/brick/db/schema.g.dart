@@ -1,24 +1,27 @@
 // GENERATED CODE DO NOT EDIT
 // This file should be version controlled
 import 'package:brick_sqlite/db.dart';
+part '20251017113207.migration.dart';
 part '20250906103617.migration.dart';
 part '20250908064003.migration.dart';
 part '20250908073957.migration.dart';
 part '20250908123137.migration.dart';
 part '20250910104207.migration.dart';
+part '20250927103750.migration.dart';
 
 /// All intelligently-generated migrations from all `@Migratable` classes on disk
 final migrations = <Migration>{
+  const Migration20251017113207(),
   const Migration20250906103617(),
   const Migration20250908064003(),
   const Migration20250908073957(),
   const Migration20250908123137(),
-  const Migration20250910104207()
+  const Migration20250910104207(),
+  const Migration20250927103750()
 };
 
 /// A consumable database structure including the latest generated migration.
-final schema =
-    Schema(20250910104207, generatorVersion: 1, tables: <SchemaTable>{
+final schema = Schema(20251017113207, generatorVersion: 1, tables: <SchemaTable>{
   SchemaTable('ExamPaper', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -41,7 +44,43 @@ final schema =
     SchemaColumn('is_favorite', Column.boolean),
     SchemaColumn('needs_sync', Column.boolean),
     SchemaColumn('device_info', Column.varchar)
-  }, indices: <SchemaIndex>{}),
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['subject'], unique: false),
+    SchemaIndex(columns: ['grade'], unique: false),
+    SchemaIndex(columns: ['syllabus'], unique: false),
+    SchemaIndex(columns: ['year'], unique: false),
+    SchemaIndex(columns: ['exam_period'], unique: false),
+    SchemaIndex(columns: ['paper_type'], unique: false),
+    SchemaIndex(columns: ['is_active'], unique: false),
+    SchemaIndex(columns: ['uploaded_at'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
+  SchemaTable('MCQOption', columns: <SchemaColumn>{
+    SchemaColumn('_brick_id', Column.integer,
+        autoincrement: true, nullable: false, isPrimaryKey: true),
+    SchemaColumn('id', Column.varchar, unique: true),
+    SchemaColumn('question_id', Column.varchar),
+    SchemaColumn('part_id', Column.varchar),
+    SchemaColumn('label', Column.varchar),
+    SchemaColumn('text', Column.varchar),
+    SchemaColumn('option_images', Column.varchar),
+    SchemaColumn('is_correct', Column.boolean),
+    SchemaColumn('order_index', Column.integer),
+    SchemaColumn('created_at', Column.datetime),
+    SchemaColumn('last_synced_at', Column.datetime),
+    SchemaColumn('needs_sync', Column.boolean),
+    SchemaColumn('device_info', Column.varchar),
+    SchemaColumn('has_text', Column.boolean),
+    SchemaColumn('has_images', Column.boolean),
+    SchemaColumn('belongs_to_question', Column.boolean),
+    SchemaColumn('belongs_to_part', Column.boolean)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['question_id'], unique: false),
+    SchemaIndex(columns: ['part_id'], unique: false),
+    SchemaIndex(columns: ['is_correct'], unique: false),
+    SchemaIndex(columns: ['order_index'], unique: false)
+  }),
   SchemaTable('PaperFilters', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -58,7 +97,28 @@ final schema =
     SchemaColumn('last_synced_at', Column.datetime),
     SchemaColumn('needs_sync', Column.boolean),
     SchemaColumn('device_info', Column.varchar)
-  }, indices: <SchemaIndex>{}),
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['updated_at'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
+  SchemaTable('_brick_Question_mcq_options', columns: <SchemaColumn>{
+    SchemaColumn('_brick_id', Column.integer,
+        autoincrement: true, nullable: false, isPrimaryKey: true),
+    SchemaColumn('l_Question_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'Question',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false),
+    SchemaColumn('f_MCQOption_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'MCQOption',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(
+        columns: ['l_Question_brick_id', 'f_MCQOption_brick_id'], unique: true)
+  }),
   SchemaTable('_brick_Question_parts', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -95,6 +155,24 @@ final schema =
         columns: ['l_Question_brick_id', 'f_SolutionStep_brick_id'],
         unique: true)
   }),
+  SchemaTable('_brick_Question_organized_parts', columns: <SchemaColumn>{
+    SchemaColumn('_brick_id', Column.integer,
+        autoincrement: true, nullable: false, isPrimaryKey: true),
+    SchemaColumn('l_Question_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'Question',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false),
+    SchemaColumn('f_QuestionPart_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'QuestionPart',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(
+        columns: ['l_Question_brick_id', 'f_QuestionPart_brick_id'],
+        unique: true)
+  }),
   SchemaTable('Question', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -111,14 +189,42 @@ final schema =
     SchemaColumn('hint_text', Column.varchar),
     SchemaColumn('is_active', Column.boolean),
     SchemaColumn('created_at', Column.datetime),
+    SchemaColumn('mcq_options', Column.varchar),
     SchemaColumn('parts', Column.varchar),
     SchemaColumn('solution_steps', Column.varchar),
     SchemaColumn('last_synced_at', Column.datetime),
     SchemaColumn('needs_sync', Column.boolean),
     SchemaColumn('device_info', Column.varchar),
     SchemaColumn('is_simple_question', Column.boolean),
-    SchemaColumn('is_multi_part_question', Column.boolean)
-  }, indices: <SchemaIndex>{}),
+    SchemaColumn('is_multi_part_question', Column.boolean),
+    SchemaColumn('is_m_c_q_question', Column.boolean),
+    SchemaColumn('organized_parts', Column.varchar)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['paper_id'], unique: false),
+    SchemaIndex(columns: ['order_index'], unique: false),
+    SchemaIndex(columns: ['page_number'], unique: false),
+    SchemaIndex(columns: ['is_active'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
+  SchemaTable('_brick_QuestionPart_mcq_options', columns: <SchemaColumn>{
+    SchemaColumn('_brick_id', Column.integer,
+        autoincrement: true, nullable: false, isPrimaryKey: true),
+    SchemaColumn('l_QuestionPart_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'QuestionPart',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false),
+    SchemaColumn('f_MCQOption_brick_id', Column.integer,
+        isForeignKey: true,
+        foreignTableName: 'MCQOption',
+        onDeleteCascade: true,
+        onDeleteSetDefault: false)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(
+        columns: ['l_QuestionPart_brick_id', 'f_MCQOption_brick_id'],
+        unique: true)
+  }),
   SchemaTable('_brick_QuestionPart_solution_steps', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -171,6 +277,7 @@ final schema =
     SchemaColumn('requires_working', Column.boolean),
     SchemaColumn('is_active', Column.boolean),
     SchemaColumn('created_at', Column.datetime),
+    SchemaColumn('mcq_options', Column.varchar),
     SchemaColumn('solution_steps', Column.varchar),
     SchemaColumn('sub_parts', Column.varchar),
     SchemaColumn('last_synced_at', Column.datetime),
@@ -178,8 +285,17 @@ final schema =
     SchemaColumn('device_info', Column.varchar),
     SchemaColumn('has_sub_parts', Column.boolean),
     SchemaColumn('has_solution_steps', Column.boolean),
-    SchemaColumn('total_steps', Column.integer)
-  }, indices: <SchemaIndex>{}),
+    SchemaColumn('total_steps', Column.integer),
+    SchemaColumn('is_m_c_q_part', Column.boolean)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['question_id'], unique: false),
+    SchemaIndex(columns: ['parent_part_id'], unique: false),
+    SchemaIndex(columns: ['nesting_level'], unique: false),
+    SchemaIndex(columns: ['order_index'], unique: false),
+    SchemaIndex(columns: ['is_active'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
   SchemaTable('SolutionStep', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -199,8 +315,18 @@ final schema =
     SchemaColumn('needs_sync', Column.boolean),
     SchemaColumn('device_info', Column.varchar),
     SchemaColumn('belongs_to_part', Column.boolean),
-    SchemaColumn('belongs_to_question', Column.boolean)
-  }, indices: <SchemaIndex>{}),
+    SchemaColumn('belongs_to_question', Column.boolean),
+    SchemaColumn('has_images', Column.boolean),
+    SchemaColumn('has_working_out', Column.boolean),
+    SchemaColumn('has_teaching_note', Column.boolean),
+    SchemaColumn('has_marks', Column.boolean)
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['part_id'], unique: false),
+    SchemaIndex(columns: ['question_id'], unique: false),
+    SchemaIndex(columns: ['order_index'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
   SchemaTable('StepAttempt', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -214,7 +340,13 @@ final schema =
     SchemaColumn('is_correct', Column.boolean),
     SchemaColumn('is_incorrect', Column.boolean),
     SchemaColumn('is_not_attempted', Column.boolean)
-  }, indices: <SchemaIndex>{}),
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['student_attempt_id'], unique: false),
+    SchemaIndex(columns: ['step_id'], unique: false),
+    SchemaIndex(columns: ['status'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
   SchemaTable('StudentAttempt', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -252,7 +384,14 @@ final schema =
     SchemaColumn('calculated_possible_marks', Column.integer),
     SchemaColumn('calculated_marked_steps', Column.integer),
     SchemaColumn('calculated_total_steps', Column.integer)
-  }, indices: <SchemaIndex>{}),
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['paper_id'], unique: false),
+    SchemaIndex(columns: ['mode'], unique: false),
+    SchemaIndex(columns: ['started_at'], unique: false),
+    SchemaIndex(columns: ['completed_at'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  }),
   SchemaTable('User', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -279,5 +418,11 @@ final schema =
     SchemaColumn('is_token_valid', Column.boolean),
     SchemaColumn('grade_display_name', Column.varchar),
     SchemaColumn('subject_display_name', Column.varchar)
-  }, indices: <SchemaIndex>{})
+  }, indices: <SchemaIndex>{
+    SchemaIndex(columns: ['email'], unique: false),
+    SchemaIndex(columns: ['grade'], unique: false),
+    SchemaIndex(columns: ['role'], unique: false),
+    SchemaIndex(columns: ['last_synced_at'], unique: false),
+    SchemaIndex(columns: ['needs_sync'], unique: false)
+  })
 });

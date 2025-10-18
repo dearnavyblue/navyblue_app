@@ -18,6 +18,7 @@ class AddQuestionsDialog extends ConsumerStatefulWidget {
 class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
   final _jsonController = TextEditingController();
   bool _isJsonValid = false;
+  List<dynamic>? _questionsData; // Store parsed questions
 
   @override
   void dispose() {
@@ -197,7 +198,10 @@ class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
 
   void _validateAndLoadQuestionsJson(String value) {
     if (value.trim().isEmpty) {
-      setState(() => _isJsonValid = false);
+      setState(() {
+        _isJsonValid = false;
+        _questionsData = null;
+      });
       ref.read(adminControllerProvider.notifier).clearCurrentQuestions();
       return;
     }
@@ -206,12 +210,21 @@ class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
       final json = jsonDecode(value);
       if (json is List) {
         ref.read(adminControllerProvider.notifier).loadQuestionsJson(value);
-        setState(() => _isJsonValid = true);
+        setState(() {
+          _isJsonValid = true;
+          _questionsData = json; // Store parsed data
+        });
       } else {
-        setState(() => _isJsonValid = false);
+        setState(() {
+          _isJsonValid = false;
+          _questionsData = null;
+        });
       }
     } catch (e) {
-      setState(() => _isJsonValid = false);
+      setState(() {
+        _isJsonValid = false;
+        _questionsData = null;
+      });
     }
   }
 
@@ -249,8 +262,9 @@ class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
               ),
               const SizedBox(width: 12),
               if (hasImage)
-              Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -281,18 +295,121 @@ class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
   }
 
   String _formatImagePath(String path) {
-    return path
-        .replaceAll('[', ' ')
-        .replaceAll(']', '')
-        .replaceAll('.', ' ')
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .map((part) {
-      if (RegExp(r'^\d+$').hasMatch(part)) {
-        return part;
+    if (_questionsData == null) {
+      return path; // Fallback to raw path if no data
+    }
+
+    try {
+      // Parse path like: questions[0].contextImages (no final index needed)
+      final regex = RegExp(r'questions\[(\d+)\]\.(.+)$');
+      final match = regex.firstMatch(path);
+
+      if (match == null) return path;
+
+      final questionIndex = int.parse(match.group(1)!);
+      final fieldPath = match.group(2)!;
+
+      if (questionIndex >= _questionsData!.length) return path;
+
+      final question = _questionsData![questionIndex];
+      final questionNumber = question['questionNumber'] ?? '?';
+
+      // Handle different field paths
+      if (fieldPath == 'contextImages') {
+        return 'Question $questionNumber - Context Images';
       }
-      return part[0].toUpperCase() + part.substring(1);
-    }).join(' ');
+
+      // MCQ options at question level: questions[0].mcqOptions[2].optionImages
+      if (fieldPath.startsWith('mcqOptions')) {
+        final optionMatch =
+            RegExp(r'mcqOptions\[(\d+)\]\.optionImages').firstMatch(fieldPath);
+        if (optionMatch != null) {
+          final optionIndex = int.parse(optionMatch.group(1)!);
+          final options = question['mcqOptions'] as List?;
+          if (options != null && optionIndex < options.length) {
+            final option = options[optionIndex];
+            final label = option['label'] ?? '?';
+            final text = option['text'] ?? '';
+            final preview =
+                text.length > 30 ? '${text.substring(0, 30)}...' : text;
+            return 'Question $questionNumber - Option $label: "$preview"';
+          }
+        }
+      }
+
+      // Direct solution steps: questions[0].solutionSteps[1].solutionImages
+      if (fieldPath.startsWith('solutionSteps')) {
+        final stepMatch = RegExp(r'solutionSteps\[(\d+)\]\.solutionImages')
+            .firstMatch(fieldPath);
+        if (stepMatch != null) {
+          final stepIndex = int.parse(stepMatch.group(1)!);
+          final steps = question['solutionSteps'] as List?;
+          if (steps != null && stepIndex < steps.length) {
+            final step = steps[stepIndex];
+            final stepNumber = step['stepNumber'] ?? (stepIndex + 1);
+            return 'Question $questionNumber - Solution Step $stepNumber';
+          }
+        }
+      }
+
+      // Parts: questions[0].parts[1].partImages
+      if (fieldPath.startsWith('parts')) {
+        final partMatch = RegExp(r'parts\[(\d+)\]\.(.+)').firstMatch(fieldPath);
+        if (partMatch != null) {
+          final partIndex = int.parse(partMatch.group(1)!);
+          final partSubPath = partMatch.group(2)!;
+
+          final parts = question['parts'] as List?;
+          if (parts != null && partIndex < parts.length) {
+            final part = parts[partIndex];
+            final partNumber = part['partNumber'] ?? '?';
+
+            // Part context images
+            if (partSubPath == 'partImages') {
+              return 'Question $questionNumber - Part $partNumber - Images';
+            }
+
+            // MCQ options at part level: parts[1].mcqOptions[2].optionImages
+            if (partSubPath.startsWith('mcqOptions')) {
+              final optionMatch = RegExp(r'mcqOptions\[(\d+)\]\.optionImages')
+                  .firstMatch(partSubPath);
+              if (optionMatch != null) {
+                final optionIndex = int.parse(optionMatch.group(1)!);
+                final options = part['mcqOptions'] as List?;
+                if (options != null && optionIndex < options.length) {
+                  final option = options[optionIndex];
+                  final label = option['label'] ?? '?';
+                  final text = option['text'] ?? '';
+                  final preview =
+                      text.length > 25 ? '${text.substring(0, 25)}...' : text;
+                  return 'Question $questionNumber - Part $partNumber - Option $label: "$preview"';
+                }
+              }
+            }
+
+            // Solution steps: parts[1].solutionSteps[2].solutionImages
+            if (partSubPath.startsWith('solutionSteps')) {
+              final stepMatch =
+                  RegExp(r'solutionSteps\[(\d+)\]\.solutionImages')
+                      .firstMatch(partSubPath);
+              if (stepMatch != null) {
+                final stepIndex = int.parse(stepMatch.group(1)!);
+                final steps = part['solutionSteps'] as List?;
+                if (steps != null && stepIndex < steps.length) {
+                  final step = steps[stepIndex];
+                  final stepNumber = step['stepNumber'] ?? (stepIndex + 1);
+                  return 'Question $questionNumber - Part $partNumber - Solution Step $stepNumber';
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return path; // Fallback
+    } catch (e) {
+      return path; // Fallback on any parsing error
+    }
   }
 
   Future<void> _uploadImageForPath(String path) async {
@@ -308,7 +425,6 @@ class _AddQuestionsDialogState extends ConsumerState<AddQuestionsDialog> {
         final fileName = file.name;
 
         if (imageData != null && mounted) {
-          // ✅ ensure dialog still exists
           await ref
               .read(adminControllerProvider.notifier)
               .uploadImageForQuestionPath(path, imageData, fileName);

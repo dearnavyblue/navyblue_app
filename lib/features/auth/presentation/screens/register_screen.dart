@@ -343,7 +343,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                                 // Academic Dropdowns
                                 DropdownButtonFormField<String>(
-                                  value: _selectedGrade,
+                                  initialValue: _selectedGrade,
                                   decoration: InputDecoration(
                                     labelText: 'Grade',
                                     prefixIcon: Icon(Icons.school_outlined,
@@ -369,7 +369,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedSyllabus,
+                                  initialValue: _selectedSyllabus,
                                   decoration: InputDecoration(
                                     labelText: 'Syllabus',
                                     prefixIcon: Icon(Icons.menu_book_outlined,
@@ -395,7 +395,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedProvince,
+                                  initialValue: _selectedProvince,
                                   decoration: InputDecoration(
                                     labelText: 'Province',
                                     prefixIcon: Icon(Icons.location_on_outlined,

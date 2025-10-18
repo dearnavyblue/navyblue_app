@@ -18,6 +18,9 @@ Future<QuestionPart> _$QuestionPartFromRest(Map<String, dynamic> data,
       requiresWorking: data['requiresWorking'] as bool,
       isActive: data['isActive'] as bool,
       createdAt: DateTime.parse(data['createdAt'] as String),
+      mcqOptions: await Future.wait<MCQOption>(
+          data['mcqOptions']?.map((d) => MCQOptionAdapter().fromRest(d, provider: provider, repository: repository)).toList().cast<Future<MCQOption>>() ??
+              []),
       solutionSteps: await Future.wait<SolutionStep>(data['solutionSteps']
               ?.map((d) => SolutionStepAdapter()
                   .fromRest(d, provider: provider, repository: repository))
@@ -25,8 +28,7 @@ Future<QuestionPart> _$QuestionPartFromRest(Map<String, dynamic> data,
               .cast<Future<SolutionStep>>() ??
           []),
       subParts: await Future.wait<QuestionPart>(data['subParts']
-              ?.map((d) => QuestionPartAdapter()
-                  .fromRest(d, provider: provider, repository: repository))
+              ?.map((d) => QuestionPartAdapter().fromRest(d, provider: provider, repository: repository))
               .toList()
               .cast<Future<QuestionPart>>() ??
           []));
@@ -49,6 +51,11 @@ Future<Map<String, dynamic>> _$QuestionPartToRest(QuestionPart instance,
     'requiresWorking': instance.requiresWorking,
     'isActive': instance.isActive,
     'createdAt': instance.createdAt.toIso8601String(),
+    'mcqOptions': await Future.wait<Map<String, dynamic>>(instance.mcqOptions
+            ?.map((s) => MCQOptionAdapter()
+                .toRest(s, provider: provider, repository: repository))
+            .toList() ??
+        []),
     'solutionSteps': await Future.wait<Map<String, dynamic>>(instance
         .solutionSteps
         .map((s) => SolutionStepAdapter()
@@ -60,7 +67,8 @@ Future<Map<String, dynamic>> _$QuestionPartToRest(QuestionPart instance,
         .toList()),
     'has_sub_parts': instance.hasSubParts,
     'has_solution_steps': instance.hasSolutionSteps,
-    'total_steps': instance.totalSteps
+    'total_steps': instance.totalSteps,
+    'is_m_c_q_part': instance.isMCQPart
   };
 }
 
@@ -83,11 +91,20 @@ Future<QuestionPart> _$QuestionPartFromSqlite(Map<String, dynamic> data,
       requiresWorking: data['requires_working'] == 1,
       isActive: data['is_active'] == 1,
       createdAt: DateTime.parse(data['created_at'] as String),
-      solutionSteps: (await provider.rawQuery(
-              'SELECT DISTINCT `f_SolutionStep_brick_id` FROM `_brick_QuestionPart_solution_steps` WHERE l_QuestionPart_brick_id = ?',
-              [
-            data['_brick_id'] as int
-          ]).then((results) {
+      mcqOptions: (await provider.rawQuery('SELECT DISTINCT `f_MCQOption_brick_id` FROM `_brick_QuestionPart_mcq_options` WHERE l_QuestionPart_brick_id = ?',
+              [data['_brick_id'] as int]).then((results) {
+        final ids = results.map((r) => r['f_MCQOption_brick_id']);
+        return Future.wait<MCQOption>(ids.map((primaryKey) => repository!
+            .getAssociation<MCQOption>(
+              Query.where('primaryKey', primaryKey, limit1: true),
+            )
+            .then((r) => r!.first)));
+      }))
+          .toList()
+          .cast<MCQOption>(),
+      solutionSteps: (await provider
+              .rawQuery('SELECT DISTINCT `f_SolutionStep_brick_id` FROM `_brick_QuestionPart_solution_steps` WHERE l_QuestionPart_brick_id = ?',
+                  [data['_brick_id'] as int]).then((results) {
         final ids = results.map((r) => r['f_SolutionStep_brick_id']);
         return Future.wait<SolutionStep>(ids.map((primaryKey) => repository!
             .getAssociation<SolutionStep>(
@@ -99,9 +116,7 @@ Future<QuestionPart> _$QuestionPartFromSqlite(Map<String, dynamic> data,
           .cast<SolutionStep>(),
       subParts: (await provider.rawQuery(
               'SELECT DISTINCT `f_QuestionPart_brick_id` FROM `_brick_QuestionPart_sub_parts` WHERE l_QuestionPart_brick_id = ?',
-              [
-            data['_brick_id'] as int
-          ]).then((results) {
+              [data['_brick_id'] as int]).then((results) {
         final ids = results.map((r) => r['f_QuestionPart_brick_id']);
         return Future.wait<QuestionPart>(ids.map((primaryKey) => repository!
             .getAssociation<QuestionPart>(
@@ -113,8 +128,7 @@ Future<QuestionPart> _$QuestionPartFromSqlite(Map<String, dynamic> data,
           .cast<QuestionPart>(),
       lastSyncedAt: DateTime.parse(data['last_synced_at'] as String),
       needsSync: data['needs_sync'] == 1,
-      deviceInfo:
-          data['device_info'] == null ? null : data['device_info'] as String?)
+      deviceInfo: data['device_info'] == null ? null : data['device_info'] as String?)
     ..primaryKey = data['_brick_id'] as int;
 }
 
@@ -135,6 +149,8 @@ Future<Map<String, dynamic>> _$QuestionPartToSqlite(QuestionPart instance,
     'requires_working': instance.requiresWorking ? 1 : 0,
     'is_active': instance.isActive ? 1 : 0,
     'created_at': instance.createdAt.toIso8601String(),
+    'mcq_options':
+        instance.mcqOptions != null ? jsonEncode(instance.mcqOptions) : null,
     'solution_steps': jsonEncode(instance.solutionSteps),
     'sub_parts': jsonEncode(instance.subParts),
     'last_synced_at': instance.lastSyncedAt.toIso8601String(),
@@ -142,7 +158,8 @@ Future<Map<String, dynamic>> _$QuestionPartToSqlite(QuestionPart instance,
     'device_info': instance.deviceInfo,
     'has_sub_parts': instance.hasSubParts ? 1 : 0,
     'has_solution_steps': instance.hasSolutionSteps ? 1 : 0,
-    'total_steps': instance.totalSteps
+    'total_steps': instance.totalSteps,
+    'is_m_c_q_part': instance.isMCQPart ? 1 : 0
   };
 }
 
@@ -236,6 +253,12 @@ class QuestionPartAdapter extends OfflineFirstWithRestAdapter<QuestionPart> {
       iterable: false,
       type: DateTime,
     ),
+    'mcqOptions': const RuntimeSqliteColumnDefinition(
+      association: true,
+      columnName: 'mcq_options',
+      iterable: true,
+      type: Map,
+    ),
     'solutionSteps': const RuntimeSqliteColumnDefinition(
       association: true,
       columnName: 'solution_steps',
@@ -283,6 +306,12 @@ class QuestionPartAdapter extends OfflineFirstWithRestAdapter<QuestionPart> {
       columnName: 'total_steps',
       iterable: false,
       type: int,
+    ),
+    'isMCQPart': const RuntimeSqliteColumnDefinition(
+      association: false,
+      columnName: 'is_m_c_q_part',
+      iterable: false,
+      type: bool,
     )
   };
   @override
@@ -303,6 +332,33 @@ class QuestionPartAdapter extends OfflineFirstWithRestAdapter<QuestionPart> {
   final String tableName = 'QuestionPart';
   @override
   Future<void> afterSave(instance, {required provider, repository}) async {
+    if (instance.primaryKey != null) {
+      final mcqOptionsOldColumns = await provider.rawQuery(
+          'SELECT `f_MCQOption_brick_id` FROM `_brick_QuestionPart_mcq_options` WHERE `l_QuestionPart_brick_id` = ?',
+          [instance.primaryKey]);
+      final mcqOptionsOldIds =
+          mcqOptionsOldColumns.map((a) => a['f_MCQOption_brick_id']);
+      final mcqOptionsNewIds =
+          instance.mcqOptions?.map((s) => s.primaryKey).whereType<int>() ?? [];
+      final mcqOptionsIdsToDelete =
+          mcqOptionsOldIds.where((id) => !mcqOptionsNewIds.contains(id));
+
+      await Future.wait<void>(mcqOptionsIdsToDelete.map((id) async {
+        return await provider.rawExecute(
+            'DELETE FROM `_brick_QuestionPart_mcq_options` WHERE `l_QuestionPart_brick_id` = ? AND `f_MCQOption_brick_id` = ?',
+            [instance.primaryKey, id]).catchError((e) => null);
+      }));
+
+      await Future.wait<int?>(instance.mcqOptions?.map((s) async {
+            final id = s.primaryKey ??
+                await provider.upsert<MCQOption>(s, repository: repository);
+            return await provider.rawInsert(
+                'INSERT OR IGNORE INTO `_brick_QuestionPart_mcq_options` (`l_QuestionPart_brick_id`, `f_MCQOption_brick_id`) VALUES (?, ?)',
+                [instance.primaryKey, id]);
+          }) ??
+          []);
+    }
+
     if (instance.primaryKey != null) {
       final solutionStepsOldColumns = await provider.rawQuery(
           'SELECT `f_SolutionStep_brick_id` FROM `_brick_QuestionPart_solution_steps` WHERE `l_QuestionPart_brick_id` = ?',

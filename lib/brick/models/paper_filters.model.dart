@@ -33,15 +33,17 @@ class PaperFilters extends OfflineFirstWithRestModel {
   @Rest(name: 'examLevels')
   final List<String> examLevels;
 
+  // OPTIMIZATION: Index updatedAt for sorting by date
+  @Sqlite(index: true)
   @Rest(name: 'updatedAt')
   final DateTime updatedAt;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -135,7 +137,8 @@ class PaperFilters extends OfflineFirstWithRestModel {
   }
 
   // Helper method to get unique subjects from local papers
-  static Future<List<String>> getSubjectsFromPapers(List<dynamic> papers) async {
+  static Future<List<String>> getSubjectsFromPapers(
+      List<dynamic> papers) async {
     final subjects = papers
         .map((paper) => paper.subject as String)
         .where((subject) => subject.isNotEmpty)
@@ -168,7 +171,8 @@ class PaperFilters extends OfflineFirstWithRestModel {
   }
 
   // Helper method to get unique paper types from local papers
-  static Future<List<String>> getPaperTypesFromPapers(List<dynamic> papers) async {
+  static Future<List<String>> getPaperTypesFromPapers(
+      List<dynamic> papers) async {
     final paperTypes = papers
         .map((paper) => paper.paperType as String)
         .where((paperType) => paperType.isNotEmpty)
@@ -179,7 +183,8 @@ class PaperFilters extends OfflineFirstWithRestModel {
   }
 
   // Helper method to get unique provinces from local papers
-  static Future<List<String>> getProvincesFromPapers(List<dynamic> papers) async {
+  static Future<List<String>> getProvincesFromPapers(
+      List<dynamic> papers) async {
     final provinces = papers
         .map((paper) => paper.province as String?)
         .where((province) => province != null && province.isNotEmpty)
@@ -191,7 +196,8 @@ class PaperFilters extends OfflineFirstWithRestModel {
   }
 
   // Helper method to get unique exam periods from local papers
-  static Future<List<String>> getExamPeriodsFromPapers(List<dynamic> papers) async {
+  static Future<List<String>> getExamPeriodsFromPapers(
+      List<dynamic> papers) async {
     final examPeriods = papers
         .map((paper) => paper.examPeriod as String)
         .where((examPeriod) => examPeriod.isNotEmpty)
@@ -202,7 +208,8 @@ class PaperFilters extends OfflineFirstWithRestModel {
   }
 
   // Helper method to get unique exam levels from local papers
-  static Future<List<String>> getExamLevelsFromPapers(List<dynamic> papers) async {
+  static Future<List<String>> getExamLevelsFromPapers(
+      List<dynamic> papers) async {
     final examLevels = papers
         .map((paper) => paper.examLevel as String)
         .where((examLevel) => examLevel.isNotEmpty)

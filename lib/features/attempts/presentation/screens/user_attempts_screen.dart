@@ -14,9 +14,8 @@ class UserAttemptsScreen extends ConsumerStatefulWidget {
   ConsumerState<UserAttemptsScreen> createState() => _UserAttemptsScreenState();
 }
 
-// Updated UserAttemptsScreen with pagination
 class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
-    with WidgetsBindingObserver, RouteAware {
+    with WidgetsBindingObserver {
   late ScrollController _scrollController;
   Map<String, String> _activeFilters = {};
   String _searchQuery = '';
@@ -41,6 +40,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
     super.dispose();
   }
 
+  // Only refresh when app comes from background, NOT when navigating back
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -265,6 +265,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
               await context.push(
                 '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}',
               );
+              // Refresh when returning - this is fine because user explicitly went to an attempt
               if (mounted) {
                 _refreshAttempts();
               }
@@ -276,8 +277,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
   }
 
   String _getPaginationText(dynamic state) {
-    const pageSize =
-        20; // This should match the pageSize used in your controller
+    const pageSize = 20;
 
     // Calculate the range for the current page
     final startIndex = (state.currentAttemptsPage - 1) * pageSize + 1;

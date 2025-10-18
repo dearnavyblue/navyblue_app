@@ -9,12 +9,18 @@ class StepAttempt extends OfflineFirstWithRestModel {
   @Rest(name: 'id')
   final String id;
 
+  // OPTIMIZATION: Index studentAttemptId for filtering by attempt
+  @Sqlite(index: true)
   @Rest(name: 'studentAttemptId')
   final String studentAttemptId;
 
+  // OPTIMIZATION: Index stepId for looking up specific steps
+  @Sqlite(index: true)
   @Rest(name: 'stepId')
   final String stepId;
 
+  // OPTIMIZATION: Index status for filtering by status
+  @Sqlite(index: true)
   @Rest(name: 'status')
   final String status; // CORRECT, INCORRECT, NOT_ATTEMPTED
 
@@ -22,11 +28,12 @@ class StepAttempt extends OfflineFirstWithRestModel {
   final DateTime markedAt;
 
   // Local-only fields for offline functionality
-  @Sqlite()
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final DateTime lastSyncedAt;
 
-  @Sqlite()
+  // OPTIMIZATION: Index needsSync for finding pending syncs
+  @Sqlite(index: true)
   @Rest(ignore: true)
   final bool needsSync;
 
@@ -40,6 +47,11 @@ class StepAttempt extends OfflineFirstWithRestModel {
     this.needsSync = false,
   })  : markedAt = markedAt ?? DateTime.now(),
         lastSyncedAt = lastSyncedAt ?? DateTime.now();
+
+  // Helper getters
+  bool get isCorrect => status == 'CORRECT';
+  bool get isIncorrect => status == 'INCORRECT';
+  bool get isNotAttempted => status == 'NOT_ATTEMPTED';
 
   StepAttempt copyWith({
     String? id,
@@ -86,9 +98,4 @@ class StepAttempt extends OfflineFirstWithRestModel {
       'markedAt': markedAt.toIso8601String(),
     };
   }
-
-  // Helper getters
-  bool get isCorrect => status == 'CORRECT';
-  bool get isIncorrect => status == 'INCORRECT';
-  bool get isNotAttempted => status == 'NOT_ATTEMPTED';
 }
