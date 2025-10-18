@@ -92,6 +92,98 @@ class StatusColors extends ThemeExtension<StatusColors> {
   }
 }
 
+@immutable
+class ProvinceColors extends ThemeExtension<ProvinceColors> {
+  final Color gauteng;
+  final Color kwazuluNatal;
+  final Color northWest;
+  final Color westernCape;
+  final Color easternCape;
+  final Color limpopo;
+  final Color mpumalanga;
+  final Color freeState;
+  final Color northernCape;
+
+  const ProvinceColors({
+    required this.gauteng,
+    required this.kwazuluNatal,
+    required this.northWest,
+    required this.westernCape,
+    required this.easternCape,
+    required this.limpopo,
+    required this.mpumalanga,
+    required this.freeState,
+    required this.northernCape,
+  });
+
+  @override
+  ProvinceColors copyWith({
+    Color? gauteng,
+    Color? kwazuluNatal,
+    Color? northWest,
+    Color? westernCape,
+    Color? easternCape,
+    Color? limpopo,
+    Color? mpumalanga,
+    Color? freeState,
+    Color? northernCape,
+  }) {
+    return ProvinceColors(
+      gauteng: gauteng ?? this.gauteng,
+      kwazuluNatal: kwazuluNatal ?? this.kwazuluNatal,
+      northWest: northWest ?? this.northWest,
+      westernCape: westernCape ?? this.westernCape,
+      easternCape: easternCape ?? this.easternCape,
+      limpopo: limpopo ?? this.limpopo,
+      mpumalanga: mpumalanga ?? this.mpumalanga,
+      freeState: freeState ?? this.freeState,
+      northernCape: northernCape ?? this.northernCape,
+    );
+  }
+
+  @override
+  ProvinceColors lerp(ThemeExtension<ProvinceColors>? other, double t) {
+    if (other is! ProvinceColors) return this;
+    return ProvinceColors(
+      gauteng: Color.lerp(gauteng, other.gauteng, t)!,
+      kwazuluNatal: Color.lerp(kwazuluNatal, other.kwazuluNatal, t)!,
+      northWest: Color.lerp(northWest, other.northWest, t)!,
+      westernCape: Color.lerp(westernCape, other.westernCape, t)!,
+      easternCape: Color.lerp(easternCape, other.easternCape, t)!,
+      limpopo: Color.lerp(limpopo, other.limpopo, t)!,
+      mpumalanga: Color.lerp(mpumalanga, other.mpumalanga, t)!,
+      freeState: Color.lerp(freeState, other.freeState, t)!,
+      northernCape: Color.lerp(northernCape, other.northernCape, t)!,
+    );
+  }
+
+  Color getColor(String? province) {
+    if (province == null || province.isEmpty) return kwazuluNatal;
+
+    switch (province.toUpperCase()) {
+      case 'GAUTENG':
+        return gauteng;
+      case 'KWAZULU_NATAL':
+        return kwazuluNatal;
+      case 'NORTH_WEST':
+        return northWest;
+      case 'WESTERN_CAPE':
+        return westernCape;
+      case 'EASTERN_CAPE':
+        return easternCape;
+      case 'LIMPOPO':
+        return limpopo;
+      case 'MPUMALANGA':
+        return mpumalanga;
+      case 'FREE_STATE':
+        return freeState;
+      case 'NORTHERN_CAPE':
+        return northernCape;
+      default:
+        return kwazuluNatal;
+    }
+  }
+}
 /// --- Core Theme Builder ---
 
 class AppTheme {
@@ -229,6 +321,17 @@ class AppTheme {
           success: Colors.green.shade600,
           warning: Colors.orange.shade700,
           info: Colors.blue.shade600,
+        ),
+         const ProvinceColors(
+          gauteng: Color(0xFF64A2FC),
+          kwazuluNatal: Color(0xFF95BBC4),
+          northWest: Color(0xFFEC8C26),
+          westernCape: Color(0xFFDAA8D0),
+          easternCape: Color(0xFFB3A7FF),
+          limpopo: Color(0xFFB5E352),
+          mpumalanga: Color(0xFFF7DA21),
+          freeState: Color(0xFFC0DDD9),
+          northernCape: Color(0xFFE05C56),
         ),
       ],
     );
