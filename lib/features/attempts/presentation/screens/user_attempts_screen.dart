@@ -80,7 +80,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
       appBar: AppBar(
         title: Text(
           'My Attempts',
-          style: theme.textTheme.headlineSmall?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
             color: theme.colorScheme.onSurface,
           ),
@@ -118,14 +118,6 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
             ),
             child: Column(
               children: [
-                UserAttemptSearchBar(
-                  onSearch: (query) {
-                    setState(() {
-                      _searchQuery = query;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
                 UserAttemptsFilters(
                   activeFilters: _activeFilters,
                   onFiltersChanged: (filters) {
@@ -134,43 +126,54 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
                     });
                   },
                 ),
+
+                const SizedBox(height: 12),
+                UserAttemptSearchBar(
+                  onSearch: (query) {
+                    setState(() {
+                      _searchQuery = query;
+                    });
+                  },
+                ),
+   
+               
               ],
             ),
           ),
 
           // Pagination Info Bar
-          if (state.totalAttemptsCount > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _getPaginationText(state),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                  if (state.hasNextAttemptsPage)
-                    Text(
-                      'Page ${state.currentAttemptsPage} of ${state.totalAttemptsPages}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          // if (state.totalAttemptsCount > 0)
+          //   Container(
+          //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     decoration: BoxDecoration(
+          //       color:
+          //           theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          //       border: Border(
+          //         bottom: BorderSide(
+          //           color: theme.colorScheme.outline.withOpacity(0.1),
+          //           width: 1,
+          //         ),
+          //       ),
+          //     ),
+          //     child: Row(
+          //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //       children: [
+          //         Text(
+          //           _getPaginationText(state),
+          //           style: theme.textTheme.bodySmall?.copyWith(
+          //             color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //           ),
+          //         ),
+          //         if (state.hasNextAttemptsPage)
+          //           Text(
+          //             'Page ${state.currentAttemptsPage} of ${state.totalAttemptsPages}',
+          //             style: theme.textTheme.bodySmall?.copyWith(
+          //               color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //             ),
+          //           ),
+          //       ],
+          //     ),
+          //   ),
           // Attempts List
           Expanded(
             child: RefreshIndicator(

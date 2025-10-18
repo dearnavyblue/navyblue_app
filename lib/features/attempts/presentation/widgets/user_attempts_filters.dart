@@ -18,6 +18,8 @@ class UserAttemptsFilters extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Status filter
           _buildFilterChip(
@@ -121,17 +123,26 @@ class UserAttemptsFilters extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final currentValue = activeFilters[key] ?? options.first;
+    final borderColor = theme.chipTheme.side?.color ?? const Color(0xFFE6E6E6);
+    final backgroundColor = theme.chipTheme.backgroundColor ?? Colors.white;
+    final borderWidth = theme.chipTheme.side?.width ?? 1.0;
+    final borderRadius = (theme.chipTheme.shape as RoundedRectangleBorder?)
+            ?.borderRadius as BorderRadius? ??
+        BorderRadius.circular(20);
 
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 34,
+      padding: theme.chipTheme.padding ??
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(18),
+        color: backgroundColor,
+        border: Border.all(color: borderColor, width: borderWidth),
+        borderRadius: borderRadius,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: currentValue,
+            isExpanded: false,
           items: options
               .map(
                 (option) => DropdownMenuItem<String>(
