@@ -65,22 +65,20 @@ class StatusColors extends ThemeExtension<StatusColors> {
   final Color success;
   final Color warning;
   final Color info;
-
-  const StatusColors({
-    required this.success,
-    required this.warning,
-    required this.info,
-  });
-
+  final Color negative;
+  const StatusColors(
+      {required this.success,
+      required this.warning,
+      required this.info,
+      required this.negative});
   @override
-  StatusColors copyWith({Color? success, Color? warning, Color? info}) {
-    return StatusColors(
-      success: success ?? this.success,
-      warning: warning ?? this.warning,
-      info: info ?? this.info,
-    );
-  }
-
+  StatusColors copyWith(
+          {Color? success, Color? warning, Color? info, Color? negative}) =>
+      StatusColors(
+          success: success ?? this.success,
+          warning: warning ?? this.warning,
+          info: info ?? this.info,
+          negative: negative ?? this.negative);
   @override
   StatusColors lerp(ThemeExtension<StatusColors>? other, double t) {
     if (other is! StatusColors) return this;
@@ -88,6 +86,7 @@ class StatusColors extends ThemeExtension<StatusColors> {
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       info: Color.lerp(info, other.info, t)!,
+      negative: Color.lerp(negative, other.negative, t)!,
     );
   }
 }
@@ -184,6 +183,38 @@ class ProvinceColors extends ThemeExtension<ProvinceColors> {
     }
   }
 }
+
+@immutable
+class AppTextStyles extends ThemeExtension<AppTextStyles> {
+  final TextStyle extraSmall;
+  final TextStyle extraExtraSmall; // optional
+
+  const AppTextStyles({
+    required this.extraSmall,
+    required this.extraExtraSmall,
+  });
+
+  @override
+  AppTextStyles copyWith({
+    TextStyle? extraSmall,
+    TextStyle? extraExtraSmall,
+  }) {
+    return AppTextStyles(
+      extraSmall: extraSmall ?? this.extraSmall,
+      extraExtraSmall: extraExtraSmall ?? this.extraExtraSmall,
+    );
+  }
+
+  @override
+  AppTextStyles lerp(ThemeExtension<AppTextStyles>? other, double t) {
+    if (other is! AppTextStyles) return this;
+    return AppTextStyles(
+      extraSmall: TextStyle.lerp(extraSmall, other.extraSmall, t)!,
+      extraExtraSmall:
+          TextStyle.lerp(extraExtraSmall, other.extraExtraSmall, t)!,
+    );
+  }
+}
 /// --- Core Theme Builder ---
 
 class AppTheme {
@@ -262,11 +293,17 @@ class AppTheme {
   static ThemeData darkTheme() => _baseTheme(_getColorScheme(Brightness.dark));
 
   static ThemeData _baseTheme(ColorScheme scheme) {
-    const radius = 12.0;
+    const radius = 8.0;
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+       fontFamily: 'Inter',
+        textTheme:
+          Typography.material2021(platform: TargetPlatform.android).black.apply(
+                bodyColor: scheme.onSurface,
+                displayColor: scheme.onSurface,
+              ),
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -318,9 +355,10 @@ class AppTheme {
           ],
         ),
         StatusColors(
-          success: Colors.green.shade600,
+          success: const Color(0xFF27C150),
           warning: Colors.orange.shade700,
           info: Colors.blue.shade600,
+          negative: Colors.red.shade600,
         ),
          const ProvinceColors(
           gauteng: Color(0xFF64A2FC),
@@ -332,6 +370,20 @@ class AppTheme {
           mpumalanga: Color(0xFFF7DA21),
           freeState: Color(0xFFC0DDD9),
           northernCape: Color(0xFFE05C56),
+        ),
+        AppTextStyles(
+          extraSmall: TextStyle(
+            fontSize: 10, // pick your size
+            height: 1.2,
+            fontWeight: FontWeight.w400,
+            color: scheme.onSurfaceVariant, // or onSurface
+          ),
+          extraExtraSmall: TextStyle(
+            fontSize: 9,
+            height: 1.2,
+            fontWeight: FontWeight.w400,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );

@@ -2,13 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navyblue_app/brick/models/exam_paper.model.dart';
 import 'package:navyblue_app/brick/models/student_attempt.model.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
+import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
+import 'package:navyblue_app/brick/repository.dart';
 import 'dart:async';
+
+import '../../../../core/theme/app_theme.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -230,61 +235,274 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quick Actions',
-            style: theme.textTheme.titleLarge?.copyWith(
+          // Title row with "View All" link
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'In Progress',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              if (state.hasActiveAttempts)
+                TextButton(
+                  onPressed: () => context.push('/user-attempts'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+
+          // Horizontal scrollable list of active attempts OR fallback cards
+          if (state.hasActiveAttempts)
+            SizedBox(
+              height:
+                  118, // Changed to accommodate new card height (91 + some padding)
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: state.activeAttempts.length,
+                itemBuilder: (context, index) {
+                  final attempt = state.activeAttempts[index];
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      right: index < state.activeAttempts.length - 1 ? 8 : 0,
+                    ),
+                    child:
+                        _buildActiveAttemptQuickCard(context, theme, attempt),
+                  );
+                },
+              ),
+            )
+          else
+            // Fallback: Show Browse Papers and Past Attempts when no active attempts
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    context,
+                    theme,
+                    icon: Icons.library_books_rounded,
+                    title: 'Browse Papers',
+                    subtitle: 'Start practicing',
+                    onTap: () => context.go('/papers'),
+                    isPrimary: true,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildActionCard(
+                    context,
+                    theme,
+                    icon: Icons.history_rounded,
+                    title: 'Past Attempts',
+                    subtitle: 'View history',
+                    onTap: () => context.push('/user-attempts'),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveAttemptQuickCard(
+      BuildContext context, ThemeData theme, StudentAttempt attempt) {
+    final scheme = theme.colorScheme;
+    final status = theme.extension<StatusColors>()!;
+    final isExam = attempt.mode == 'EXAM';
+
+    // Calculate progress (questions answered out of total)
+    final totalQuestions = attempt.calculatedTotalSteps > 0
+        ? attempt.calculatedTotalSteps
+        : attempt.questionsCompleted;
+    final answeredQuestions = attempt.calculatedMarkedSteps > 0
+        ? attempt.calculatedMarkedSteps
+        : attempt.questionsAttempted;
+
+    final progressPercentage = totalQuestions > 0
+        ? (answeredQuestions / totalQuestions * 100).round()
+        : 0;
+
+    return SizedBox(
+      width: 250,
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
+        color: scheme.surface,
+        child: InkWell(
+          onTap: () async {
+            await context.push(
+              '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}',
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 43,
+                  height: 57,
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow:
+                        (theme.extension<CustomShadows>()?.cardShadows) ??
+                            const [],
+                    image: const DecorationImage(
+                      image: AssetImage(AppConstants.pastPaperThumbnailPath),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPaperInfoWithSubject(theme, attempt.paperId),
+                      const SizedBox(height: 10),
+                      // progress
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                              FractionallySizedBox(
+                                widthFactor: progressPercentage / 100,
+                                child: Container(
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: status.success,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$progressPercentage% complete',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaperInfoWithSubject(ThemeData theme, String paperId) {
+    return FutureBuilder<ExamPaper?>(
+      future: Repository.instance
+          .get<ExamPaper>(
+            query: Query.where('id', paperId, limit1: true),
+          )
+          .then((papers) => papers.isNotEmpty ? papers.first : null),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return Text(
+            'Loading...',
+            style: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: state.hasActiveAttempts
-                    ? _buildActionCard(
-                        context,
-                        theme,
-                        icon: Icons.play_circle_fill_rounded,
-                        title: 'Resume Study',
-                        subtitle: '${state.activeAttempts.length} active',
-                        onTap: () => context.push('/user-attempts'),
-                        isPrimary: true,
-                      )
-                    : _buildActionCard(
-                        context,
-                        theme,
-                        icon: Icons.library_books_rounded,
-                        title: 'Browse Papers',
-                        subtitle: 'Start practicing',
-                        onTap: () => context.go('/papers'),
-                        isPrimary: true,
-                      ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+
+        final paper = snapshot.data!;
+
+        final grade = AppConfig.getGradeDisplayName(paper.grade); // ← Add this
+        final subject = AppConfig.getSubjectDisplayName(paper.subject);
+        final examPeriod = AppConfig.getExamPeriodDisplayName(paper.examPeriod);
+        final paperType = AppConfig.getPaperTypeDisplayName(paper.paperType);
+        final provinceAbbr =
+            AppConfig.getProvinceAbbreviation(paper.province ?? '');
+
+        // Build grade and subject text (e.g., "Grade 10 · Mathematics")
+        final gradeSubjectText = '$grade · $subject'; // ← Add this
+
+        // Build main paper text (year, period, type)
+        final parts = <String>[];
+        if (paper.year > 0) parts.add(paper.year.toString());
+        if (examPeriod.isNotEmpty) parts.add(examPeriod);
+        if (paperType.isNotEmpty) parts.add(paperType);
+
+        final mainText = parts.join(' ');
+
+        final txt = theme.extension<AppTextStyles>()!;
+
+        // Add province if available (e.g., "2024 November P2 - KZN")
+        final paperText =
+            provinceAbbr.isNotEmpty ? '$mainText - $provinceAbbr' : mainText;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Grade and Subject text with dot separator
+            Text(
+              gradeSubjectText,
+              style: txt.extraExtraSmall.copyWith(
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: state.hasActiveAttempts
-                    ? _buildActionCard(
-                        context,
-                        theme,
-                        icon: Icons.library_books_rounded,
-                        title: 'New Papers',
-                        subtitle: 'Discover more',
-                        onTap: () => context.go('/papers'),
-                      )
-                    : _buildActionCard(
-                        context,
-                        theme,
-                        icon: Icons.history_rounded,
-                        title: 'Past Attempts',
-                        subtitle: 'View history',
-                        onTap: () => context.push('/user-attempts'),
-                      ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              paperText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+                height: 1.3,
               ),
-            ],
-          ),
-        ],
-      ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -297,6 +515,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     required VoidCallback onTap,
     bool isPrimary = false,
   }) {
+    final gradients = theme.extension<GradientColors>()!;
+    
     return Card(
       elevation: isPrimary ? 4 : 2,
       child: InkWell(
@@ -306,16 +526,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            gradient: isPrimary
-                ? LinearGradient(
-                    colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.secondary,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+            gradient: isPrimary ? gradients.primaryGradient : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,19 +548,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurface,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isPrimary
-                      ? theme.colorScheme.onPrimary.withOpacity(0.8)
+                      ? theme.colorScheme.onPrimary.withOpacity(0.85)
                       : theme.colorScheme.onSurfaceVariant,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -422,6 +629,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'Exam Readiness',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
+              fontSize: 18,
               color: theme.colorScheme.onSurface,
             ),
           ),
@@ -451,7 +659,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     borderRadius: BorderRadius.circular(24),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? theme.colorScheme.primary
@@ -515,8 +723,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: _getReadinessColor(
-                                theme, selectedProgress.readinessLevel),
+                            color: _statusColor(
+                                context, selectedProgress.readinessLevel),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -541,8 +749,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(
                           selectedProgress.overallReadiness > 0
-                              ? _getReadinessColor(
-                                  theme, selectedProgress.readinessLevel)
+                              ? _statusColor(
+                                  context, selectedProgress.readinessLevel)
                               : theme.colorScheme.outline,
                         ),
                       ),
@@ -614,8 +822,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                       theme.colorScheme.surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation(
                                     topicAccuracy > 0
-                                        ? _getReadinessColor(
-                                            theme, topic.status)
+                                        ? _statusColor(context, topic.status)
                                         : theme.colorScheme.outline,
                                   ),
                                 ),
@@ -665,8 +872,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation(
               score > 0
-                  ? _getReadinessColor(
-                      theme, _getReadinessLevelFromScore(score))
+                  ? _statusColor(context, _getReadinessLevelFromScore(score))
                   : Colors.grey[300]!,
             ),
           ),
@@ -721,6 +927,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       BuildContext context, ThemeData theme, StudentAttempt attempt) {
     final isExam = attempt.mode == 'EXAM';
     final timeElapsed = DateTime.now().difference(attempt.startedAt);
+    final scheme = theme.colorScheme;
+    final container =
+        isExam ? scheme.tertiaryContainer : scheme.secondaryContainer;
+    final onContainer =
+        isExam ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
+
 
     return Card(
       child: InkWell(
@@ -733,17 +945,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isExam
-                      ? theme.colorScheme.tertiaryContainer
-                      : theme.colorScheme.secondaryContainer,
+                  color: container,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   isExam ? Icons.timer : Icons.psychology,
                   size: 20,
-                  color: isExam
-                      ? theme.colorScheme.onTertiaryContainer
-                      : theme.colorScheme.onSecondaryContainer,
+                  color: onContainer,
                 ),
               ),
               const SizedBox(width: 12),
@@ -869,18 +1077,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return 'Good evening';
   }
 
-  Color _getReadinessColor(ThemeData theme, String level) {
+Color _statusColor(BuildContext context, String level) {
+    final status = Theme.of(context).extension<StatusColors>()!;
     switch (level.toLowerCase()) {
       case 'excellent':
-        return Colors.green;
+        return status.success;
       case 'good':
-        return Colors.blue;
+        return status.info;
       case 'fair':
-        return Colors.orange;
+        return status.warning;
       case 'needs work':
-        return Colors.red;
+        return status.negative;
       default:
-        return theme.colorScheme.primary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
