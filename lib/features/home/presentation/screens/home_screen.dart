@@ -239,13 +239,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'In Progress',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: theme.colorScheme.onSurface,
-                ),
+              Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'In Progress',
+                     style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                   Text(
+                    'Continue where you left off',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
               if (state.hasActiveAttempts)
                 TextButton(
@@ -258,7 +268,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     children: [
                       Text(
                         'View All',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.primary,
                         ),
@@ -618,6 +628,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final subjects = state.progressSummary!.subjects;
     final selectedProgress =
         _selectedSubject != null ? subjects[_selectedSubject] : null;
+        final txt = Theme.of(context).extension<AppTextStyles>()!;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -627,17 +638,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // Title
           Text(
             'Exam Readiness',
-            style: theme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 18,
               color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             'See how ready you are for the exams',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500
             ),
           ),
           const SizedBox(height: 16),
@@ -662,17 +673,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? theme.colorScheme.primary
+                            ? theme.colorScheme.onSurface
                             : theme.colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Text(
                         AppConfig.getSubjectDisplayName(subject),
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: isSelected
                               ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                     ),
@@ -681,11 +692,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               }).toList(),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Selected Subject Content
           if (selectedProgress != null)
             Card(
+               margin: EdgeInsets.zero,  
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -700,27 +712,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               Text(
                                 AppConfig.getSubjectDisplayName(
                                     _selectedSubject!),
-                                style: theme.textTheme.titleMedium?.copyWith(
+                                style: theme.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: theme.colorScheme.onSurface,
                                 ),
                               ),
                               const Spacer(),
-                              Text(
-                                '${selectedProgress.overallReadiness}% Ready',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                            horizontal: 6,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: _statusColor(
@@ -729,7 +734,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           ),
                           child: Text(
                             selectedProgress.readinessLevel,
-                            style: theme.textTheme.bodySmall?.copyWith(
+                            style: txt.extraSmall.copyWith(
                               color: theme.colorScheme.onPrimary,
                               fontWeight: FontWeight.w600,
                             ),
@@ -744,7 +749,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: selectedProgress.overallReadiness / 100,
-                        minHeight: 8,
+                        minHeight: 5,
                         backgroundColor:
                             theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation(
@@ -755,7 +760,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Papers Section - Always show Paper 1 and Paper 2
                     Row(
@@ -779,7 +784,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Topics Breakdown
                     if (selectedProgress
@@ -797,14 +802,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 children: [
                                   Text(
                                     topic.topic,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       fontWeight: FontWeight.w500,
-                                      color: theme.colorScheme.onSurface,
+                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                   const Spacer(),
                                   Text(
-                                    '${topicAccuracy.toInt()}% Ready',
+                                    '${topicAccuracy.toInt()}%',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w500,
@@ -817,7 +822,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: topicAccuracy / 100,
-                                  minHeight: 6,
+                                  minHeight: 5,
                                   backgroundColor:
                                       theme.colorScheme.surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation(
@@ -850,12 +855,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Text(
               paperName,
               style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
+                 color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const Spacer(),
             Text(
-              '${score.toInt()}% Ready',
+              '${score.toInt()}%',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
@@ -868,7 +874,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: score / 100,
-            minHeight: 6,
+            minHeight: 5,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation(
               score > 0
