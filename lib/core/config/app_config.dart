@@ -118,4 +118,69 @@ class AppConfig {
         return province;
     }
   }
+
+  // Get province abbreviations
+  static String getProvinceAbbreviation(String province) {
+    switch (province) {
+      case 'GAUTENG':
+        return 'GP';
+      case 'WESTERN_CAPE':
+        return 'WC';
+      case 'KWAZULU_NATAL':
+        return 'KZN';
+      case 'EASTERN_CAPE':
+        return 'EC';
+      case 'LIMPOPO':
+        return 'LP';
+      case 'MPUMALANGA':
+        return 'MP';
+      case 'NORTH_WEST':
+        return 'NW';
+      case 'FREE_STATE':
+        return 'FS';
+      case 'NORTHERN_CAPE':
+        return 'NC';
+      default:
+        return province;
+    }
+  }
+
+// Get exam period display name
+  static String getExamPeriodDisplayName(String? examPeriod) {
+    if (examPeriod == null || examPeriod.isEmpty) return '';
+
+    final normalized = examPeriod.toUpperCase().replaceAll('_', '');
+
+    switch (normalized) {
+      case 'TERM1':
+        return 'March';
+      case 'TERM2':
+        return 'June';
+      case 'TERM3':
+        return 'September';
+      case 'TERM4':
+        return 'November';
+      default:
+        return examPeriod[0].toUpperCase() +
+            examPeriod.substring(1).toLowerCase();
+    }
+  }
+
+// Get paper type display name
+  static String getPaperTypeDisplayName(String? paperType) {
+    if (paperType == null || paperType.isEmpty) return '';
+
+    // Convert PAPER_1, PAPER_2, etc to P1, P2
+    final normalized = paperType.toUpperCase();
+
+    if (normalized.startsWith('PAPER')) {
+      // Extract number from PAPER_1, PAPER_2, etc
+      final match = RegExp(r'PAPER[_\s]*(\d+)').firstMatch(normalized);
+      if (match != null) {
+        return 'P${match.group(1)}';
+      }
+    }
+
+    return normalized;
+  }
 }
