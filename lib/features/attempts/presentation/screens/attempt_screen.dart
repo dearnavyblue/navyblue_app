@@ -6,7 +6,7 @@ import '../../domain/entities/attempt_config.dart';
 import '../providers/attempts_presentation_providers.dart';
 import '../widgets/paper_tab_widget.dart';
 import '../widgets/memo_tab_widget.dart';
-import '../widgets/attempt_progress_widget.dart';
+import '../widgets/attempt_center_switcher.dart';
 
 class AttemptScreen extends ConsumerStatefulWidget {
   final String paperId;
@@ -156,133 +156,27 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
       child: DefaultTabController(
         length: 2,
         child: Scaffold(
-          appBar: AppBar(
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    state.paper?.title ?? 'Paper Attempt',
-                    style: theme.textTheme.titleMedium,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (state.isOffline)
-                  Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Offline',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.orange[800],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            backgroundColor: theme.colorScheme.surface,
-            foregroundColor: theme.colorScheme.onSurface,
-            elevation: 0,
-            actions: [
-              if (state.isExamMode && state.isTimerRunning)
-                Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: state.remainingSeconds != null &&
-                            state.remainingSeconds! < 300
-                        ? Colors.red[100]
-                        : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        size: 16,
-                        color: state.remainingSeconds != null &&
-                                state.remainingSeconds! < 300
-                            ? Colors.red[700]
-                            : Colors.grey[700],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatTime(state.remainingSeconds ?? 0),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: state.remainingSeconds != null &&
-                                  state.remainingSeconds! < 300
-                              ? Colors.red[700]
-                              : Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else if (state.isPracticeMode)
-                IconButton(
-                  icon: Icon(
-                    state.canShowHints
-                        ? Icons.lightbulb
-                        : Icons.lightbulb_outline,
-                  ),
-                  onPressed: () {
-                    ref
-                        .read(
-                            attemptsControllerProvider(widget.paperId).notifier)
-                        .toggleHints();
-                  },
-                  tooltip: 'Assist Mode',
-                ),
-            ],
+          appBar: AttemptAppBar(
+            selectedIndex: _getTabController().index,
+            memoEnabled: state.memoEnabled,
+            onChanged: (i) {
+              _handleTabChange(i);
+              _getTabController().animateTo(i);
+            },
+            isExamMode: state.isExamMode,
+            isTimerRunning: state.isTimerRunning,
+            remainingSeconds: state.remainingSeconds,
+            isPracticeMode: state.isPracticeMode,
+            canShowHints: state.canShowHints,
+            onToggleHints: () {
+              ref
+                  .read(attemptsControllerProvider(widget.paperId).notifier)
+                  .toggleHints();
+            },
+            isOffline: state.isOffline,
           ),
           body: Column(
             children: [
-              Material(
-                color: theme.colorScheme.surface,
-                child: TabBar(
-                  controller: _getTabController(),
-                  onTap: (index) => _handleTabChange(index),
-                  indicatorColor: theme.colorScheme.primary,
-                  labelColor: theme.colorScheme.primary,
-                  unselectedLabelColor: state.memoEnabled
-                      ? theme.colorScheme.onSurfaceVariant
-                      : theme.disabledColor,
-                  labelStyle: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  unselectedLabelStyle: theme.textTheme.bodyMedium,
-                  tabs: [
-                    const Tab(
-                      icon: Icon(Icons.description_outlined),
-                      text: "Paper",
-                    ),
-                    Tab(
-                      icon: Icon(
-                        Icons.assignment_outlined,
-                        color: state.memoEnabled ? null : theme.disabledColor,
-                      ),
-                      child: Text(
-                        "Memo",
-                        style: TextStyle(
-                          color: state.memoEnabled ? null : theme.disabledColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (state.progress != null)
-                AttemptProgressWidget(progress: state.progress!),
               if (showCompleteButton)
                 Container(
                   width: double.infinity,
