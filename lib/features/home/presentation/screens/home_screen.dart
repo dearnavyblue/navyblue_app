@@ -7,6 +7,9 @@ import 'package:navyblue_app/brick/models/student_attempt.model.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
+import 'package:navyblue_app/features/greeting/presentation/greeting_bar.dart';
+import 'package:navyblue_app/features/greeting/presentation/greeting_patterns.dart';
+import 'package:navyblue_app/features/greeting/presentation/greeting_patterns_corner.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
@@ -123,29 +126,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             else
               SliverList(
                 delegate: SliverChildListDelegate([
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${_getGreeting()}, ${authState.user?.firstName ?? 'Student'}',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh),
-                            onPressed: () {
-                              _lastRefreshTime = DateTime.now();
-                              _loadDashboardData();
-                            },
-                            tooltip: 'Refresh',
-                          ),
-                        ],
+                 Padding(
+                    padding:
+                        const EdgeInsets.fromLTRB(0, 0, 0, 0), // page margin
+                    child: Material(
+                      color: Theme.of(context).colorScheme.surface,
+                      clipBehavior:
+                          Clip.antiAlias, // clip gradient/pattern to radius
+                      child: GreetingBar(
+                        displayName:
+                            authState.user?.firstName?.trim() ?? 'Student',
+                        pattern: CornerPattern
+                            .cornerDots, // or cornerChevrons / none
+                        patternOpacity: 0.06,
+                        brandTint: const Color(0xFFEFF6FF),
+                        height: 84, // ↑ give it a bit more headroom than 70
+                        colorCoverage: 1, // < 30% colored area
                       ),
                     ),
                   ),
