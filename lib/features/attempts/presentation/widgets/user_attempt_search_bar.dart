@@ -27,32 +27,32 @@ class _UserAttemptSearchBarState extends State<UserAttemptSearchBar> {
     final theme = Theme.of(context);
 
     return Container(
+      height: 40,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.1),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
         controller: _controller,
+        style: theme.textTheme.bodyMedium,
         onChanged: (value) {
           widget.onSearch(value);
         },
         decoration: InputDecoration(
           hintText: 'Search by paper title, subject...',
-          hintStyle: TextStyle(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
           ),
           prefixIcon: Icon(
-            Icons.search_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
+            Icons.search,
+            size: 22,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
           ),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.clear_rounded,
+                    size: 18,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   onPressed: () {
@@ -65,7 +65,7 @@ class _UserAttemptSearchBarState extends State<UserAttemptSearchBar> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 16,
+            vertical: 12,
           ),
         ),
       ),
