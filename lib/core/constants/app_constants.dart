@@ -14,6 +14,7 @@ class AppConstants {
   // Asset Paths
   static const String logoPath = 'assets/images/logo.png';
   static const String placeholderImagePath = 'assets/images/placeholder.png';
+  static const String pastPaperThumbnailPath = '/images/past_paper_thumbnail.png';
   
   // Animation Durations
   static const Duration shortAnimation = Duration(milliseconds: 200);
