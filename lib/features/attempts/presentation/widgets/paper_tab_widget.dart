@@ -3,6 +3,9 @@ import 'package:navyblue_app/brick/models/mcq_option.model.dart';
 import 'package:navyblue_app/core/widgets/latex_text_widget.dart';
 import 'package:navyblue_app/core/widgets/network_image_widget.dart';
 import '../../../../brick/models/question.model.dart';
+import '../widgets/paper_page_scaffold.dart';
+import '../widgets/paper_header.dart';
+import '../widgets/paper_header_data.dart';
 
 class PaperTabWidget extends StatelessWidget {
   final List<Question> questions;
@@ -18,6 +21,25 @@ class PaperTabWidget extends StatelessWidget {
   final bool canGoToNext;
   final String pageDisplayText;
   final bool isOnInstructionsPage;
+  final PaperHeaderData? headerData;
+
+  String _parens(int? n) => n == null ? '' : '(${n})';
+  String _brackets(int? n) => n == null ? '' : '[${n}]';
+
+  bool _isContextOnly(Question q) {
+    final hasContext = (q.contextText?.trim().isNotEmpty == true) ||
+        q.contextImages.isNotEmpty;
+    final hasOwnPrompt = q.questionText != null;
+    final hasOwnMcq = q.mcqOptions != null && q.mcqOptions!.isNotEmpty;
+    return hasContext && !hasOwnPrompt && !hasOwnMcq && q.isMultiPartQuestion;
+  }
+
+  TextStyle _marksStyle(BuildContext context) =>
+      Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.normal,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ) ??
+      const TextStyle(fontSize: 12, fontWeight: FontWeight.w400);
 
   const PaperTabWidget({
     super.key,
@@ -34,21 +56,41 @@ class PaperTabWidget extends StatelessWidget {
     required this.canGoToNext,
     required this.pageDisplayText,
     required this.isOnInstructionsPage,
+    this.headerData,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final shouldShowHeader = headerData != null &&
+        !isOnInstructionsPage &&
+        currentPage >= (headerData!.startsAtPage);
+
+
     return Column(
       children: [
-        const SizedBox(height: 32),
-
         /// Content based on current page
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildPageContent(context),
+            padding: EdgeInsets.zero,
+            child: PaperPageScaffold(
+              enableZoom: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (headerData != null &&
+                      !isOnInstructionsPage &&
+                      currentPage >= (headerData!.startsAtPage))
+                    PaperHeader(
+                      data: headerData!,
+                      pageNumber: currentPage + (headerData?.pageOffset ?? 0),
+                    ),
+                  _buildPageContent(
+                      context), // questions (or instructions) follow
+                ],
+              ),
+            ),
           ),
         ),
 
@@ -159,35 +201,67 @@ class PaperTabWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildQuestion(BuildContext context, Question question) {
+  Widget _questionHeading(BuildContext context, String number,
+      {String? secondary}) {
     final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            'QUESTION $number',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+          if (secondary != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              secondary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestion(BuildContext context, Question question) {
+    final heading = _questionHeading(context, question.questionNumber);
+    final theme = Theme.of(context);
+    final isContextOnly = _isContextOnly(question);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// Question header with context
+          heading,
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 32,
-                child: Text(
-                  question.questionNumber,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+              if (!isContextOnly)
+                SizedBox(
+                  width: 32,
+                  child: Text(
+                    question.questionNumber,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (question.contextText != null) ...[
                       LaTeXTextWidget(
-                          text: question.contextText!,
-                          style: theme.textTheme.bodyLarge),
+                        text: question.contextText!
+                      ),
                     ],
                     if (question.contextImages.isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -227,35 +301,23 @@ class PaperTabWidget extends StatelessWidget {
           ]
           // Handle multi-part questions
           else if (question.isMultiPartQuestion) ...[
-            if (question.questionText == null &&
-                question.totalMarks != null) ...[
-              Container(
-                margin: const EdgeInsets.only(left: 32, bottom: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        border:
-                            Border.all(color: theme.colorScheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '(${question.totalMarks})',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             ...question.organizedParts
                 .map((part) => _buildQuestionPart(context, part)),
+          ],
+
+          if (question.totalMarks != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              // indent to line up with the main content column (skip the left 32 gutter)
+              margin: EdgeInsets.only(left: !isContextOnly ? 32 : 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(_brackets(question.totalMarks),
+                      style: _marksStyle(context)),
+                ],
+              ),
+            ),
           ],
         ],
       ),
@@ -277,27 +339,13 @@ class PaperTabWidget extends StatelessWidget {
                 Expanded(
                   child: LaTeXTextWidget(
                     text: question.questionText!,
-                    style: theme.textTheme.bodyMedium,
                   ),
                 ),
                 if (question.totalMarks != null) ...[
                   const SizedBox(width: 16),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: theme.colorScheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '(${question.totalMarks})',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(width: 16),
+                  Text(_parens(question.totalMarks),
+                      style: _marksStyle(context)),
                 ],
               ],
             ),
@@ -344,7 +392,6 @@ class PaperTabWidget extends StatelessWidget {
                         if (option.text != null && option.text!.isNotEmpty) ...[
                           LaTeXTextWidget(
                             text: option.text!,
-                            style: theme.textTheme.bodyMedium,
                           ),
                         ],
                         if (option.optionImages.isNotEmpty) ...[
@@ -383,48 +430,30 @@ class PaperTabWidget extends StatelessWidget {
   Widget _buildSimpleQuestion(BuildContext context, Question question) {
     final theme = Theme.of(context);
 
-    return Container(
-      margin: const EdgeInsets.only(left: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (question.questionText != null) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: LaTeXTextWidget(
-                    text: question.questionText!,
-                    style: theme.textTheme.bodyMedium,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (question.questionText != null) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: LaTeXTextWidget(
+                  text: question.questionText!,
+                  style: theme.textTheme.bodySmall,
                 ),
-                if (question.totalMarks != null) ...[
-                  const SizedBox(width: 16),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      border:
-                          Border.all(color: theme.colorScheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '(${question.totalMarks})',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
+              ),
+              if (question.totalMarks != null) ...[
+                const SizedBox(width: 16),
+                Text(_parens(question.totalMarks), style: _marksStyle(context)),
               ],
-            ),
-            const SizedBox(height: 8),
-          ],
-          if (showHints && question.hintText != null)
-            _buildQuestionHint(context, question.hintText!),
+            ],
+          ),
+          const SizedBox(height: 8),
         ],
-      ),
+        if (showHints && question.hintText != null)
+          _buildQuestionHint(context, question.hintText!),
+      ],
     );
   }
 
@@ -484,7 +513,7 @@ class PaperTabWidget extends StatelessWidget {
 
     // Regular part rendering
     return Container(
-      margin: const EdgeInsets.only(left: 32, bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -495,8 +524,8 @@ class PaperTabWidget extends StatelessWidget {
                 width: 32,
                 child: Text(
                   part.partNumber,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
@@ -506,7 +535,6 @@ class PaperTabWidget extends StatelessWidget {
                   children: [
                     LaTeXTextWidget(
                       text: part.partText,
-                      style: theme.textTheme.bodyMedium,
                     ),
                     if (part.partImages.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -536,18 +564,7 @@ class PaperTabWidget extends StatelessWidget {
               ),
               Container(
                 margin: const EdgeInsets.only(left: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '(${part.marks})',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSecondaryContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                child: Text(_parens(part.marks), style: _marksStyle(context)),
               ),
             ],
           ),
@@ -586,7 +603,6 @@ class PaperTabWidget extends StatelessWidget {
                   children: [
                     LaTeXTextWidget(
                       text: part.partText,
-                      style: theme.textTheme.bodyMedium,
                     ),
                     // Render part images
                     if (part.partImages.isNotEmpty) ...[
@@ -670,7 +686,6 @@ class PaperTabWidget extends StatelessWidget {
                         if (option.text != null && option.text!.isNotEmpty) ...[
                           LaTeXTextWidget(
                             text: option.text!,
-                            style: theme.textTheme.bodyMedium,
                           ),
                         ],
                         if (option.optionImages.isNotEmpty) ...[
@@ -777,7 +792,7 @@ class PaperTabWidget extends StatelessWidget {
                 width: 32,
                 child: Text(
                   subPart.partNumber,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -788,7 +803,6 @@ class PaperTabWidget extends StatelessWidget {
                   children: [
                     LaTeXTextWidget(
                       text: subPart.partText,
-                      style: theme.textTheme.bodyMedium,
                     ),
                     if (subPart.partImages.isNotEmpty) ...[
                       const SizedBox(height: 6),
@@ -818,18 +832,8 @@ class PaperTabWidget extends StatelessWidget {
               ),
               Container(
                 margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  '(${subPart.marks})',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                child:
+                    Text(_parens(subPart.marks), style: _marksStyle(context)),
               ),
             ],
           ),

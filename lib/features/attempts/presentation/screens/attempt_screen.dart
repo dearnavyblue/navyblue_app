@@ -7,6 +7,7 @@ import '../providers/attempts_presentation_providers.dart';
 import '../widgets/paper_tab_widget.dart';
 import '../widgets/memo_tab_widget.dart';
 import '../widgets/attempt_center_switcher.dart';
+import '../widgets/paper_header_data.dart';
 
 class AttemptScreen extends ConsumerStatefulWidget {
   final String paperId;
@@ -151,6 +152,8 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
     final showCompleteButton =
         state.currentAttempt != null && !state.currentAttempt!.isCompleted;
 
+        final headerData = state.paper?.toHeaderData();
+
     return WillPopScope(
       onWillPop: () => _handleBackPress(context, state),
       child: DefaultTabController(
@@ -181,7 +184,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
                 Container(
                   width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   child: Row(
                     children: [
                       Expanded(
@@ -244,6 +247,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen>
                       canGoToNext: state.canGoToNextPage,
                       pageDisplayText: state.pageDisplayText,
                       isOnInstructionsPage: state.isOnInstructionsPage,
+                        headerData: headerData,
                     ),
                     state.memoEnabled
                         ? MemoTabWidget(

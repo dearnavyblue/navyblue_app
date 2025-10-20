@@ -146,7 +146,7 @@ class _AttemptCenterSwitcher extends StatelessWidget {
                 style: ButtonStyle(
                   shape: const MaterialStatePropertyAll(StadiumBorder()),
                   padding: const MaterialStatePropertyAll(
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                   ),
                   // transparent so our custom pill is visible
                   backgroundColor:
