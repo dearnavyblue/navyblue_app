@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:navyblue_app/brick/models/mcq_option.model.dart';
 import 'package:navyblue_app/core/widgets/latex_text_widget.dart';
@@ -6,6 +8,7 @@ import '../../../../brick/models/question.model.dart';
 import '../widgets/paper_page_scaffold.dart';
 import '../widgets/paper_header.dart';
 import '../widgets/paper_header_data.dart';
+import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 
 class PaperTabWidget extends StatelessWidget {
   final List<Question> questions;
@@ -66,67 +69,75 @@ class PaperTabWidget extends StatelessWidget {
     final shouldShowHeader = headerData != null &&
         !isOnInstructionsPage &&
         currentPage >= (headerData!.startsAtPage);
+    final mediaQuery = MediaQuery.of(context);
+    final bottomBarWidth = math.max(0.0, mediaQuery.size.width - 42);
+    final barBorderRadius = BorderRadius.circular(bottomBarWidth / 2);
 
-
-    return Column(
-      children: [
-        /// Content based on current page
-        Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.zero,
-            child: PaperPageScaffold(
-              enableZoom: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (headerData != null &&
-                      !isOnInstructionsPage &&
-                      currentPage >= (headerData!.startsAtPage))
-                    PaperHeader(
-                      data: headerData!,
-                      pageNumber: currentPage + (headerData?.pageOffset ?? 0),
-                    ),
-                  _buildPageContent(
-                      context), // questions (or instructions) follow
-                ],
-              ),
+    return BottomBar(
+      width: bottomBarWidth,
+      offset: 16,
+      barColor: theme.colorScheme.surface,
+      borderRadius: barBorderRadius,
+      barDecoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: barBorderRadius,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      showIcon: false,
+      hideOnScroll: false,
+      body: (context, controller) => SingleChildScrollView(
+        controller: controller,
+        padding: EdgeInsets.zero,
+        child: PaperPageScaffold(
+          enableZoom: true,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (shouldShowHeader)
+                  PaperHeader(
+                    data: headerData!,
+                    pageNumber: currentPage + (headerData?.pageOffset ?? 0),
+                  ),
+                _buildPageContent(context), // questions (or instructions) follow
+              ],
             ),
           ),
         ),
-
-        /// Navigation footer
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            border: Border(
-              top: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              onPressed: canGoToPrevious ? onPreviousPage : null,
+              icon: const Icon(Icons.chevron_left),
+              tooltip: 'Previous page',
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton.icon(
-                onPressed: canGoToPrevious ? onPreviousPage : null,
-                icon: const Icon(Icons.chevron_left),
-                label: const Text('Previous'),
+            const SizedBox(width: 36),
+            Text(
+              'Formula Sheet',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              Text(
-                pageDisplayText,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: canGoToNext ? onNextPage : null,
-                icon: const Icon(Icons.chevron_right),
-                label: const Text('Next'),
-                iconAlignment: IconAlignment.end,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 36),
+            IconButton(
+              onPressed: canGoToNext ? onNextPage : null,
+              icon: const Icon(Icons.chevron_right),
+              tooltip: 'Next page',
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
