@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LaTeXTextWidget extends StatelessWidget {
   final String text;
@@ -32,7 +33,11 @@ class LaTeXTextWidget extends StatelessWidget {
     }
 
     final defaultTextStyle =
-        style ?? theme.textTheme.bodyMedium ?? const TextStyle();
+        style ??
+        GoogleFonts.crimsonText(
+          fontWeight: FontWeight.w500,
+        ) ??
+        const TextStyle();
     final textColor = defaultTextStyle.color ??
         theme.textTheme.bodyMedium?.color ??
         Colors.black;
@@ -61,7 +66,7 @@ class LaTeXTextWidget extends StatelessWidget {
                 return SvgPicture.string(
                   svg,
                   colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
-                  height: (defaultTextStyle.fontSize ?? 14) * 1.2,
+                  height: (defaultTextStyle.fontSize ?? 9.5) * 1.1,
                   fit: BoxFit.contain,
                 );
               },
@@ -72,7 +77,7 @@ class LaTeXTextWidget extends StatelessWidget {
       displayFormulaWidgetBuilder: (context, displayFormula) {
         return GestureDetector(
           onTap: () => _showZoomedMath(context, displayFormula, textColor,
-              (defaultTextStyle.fontSize ?? 14) * 1.5),
+              (defaultTextStyle.fontSize ?? 9.5) * 1.2),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),
             padding: const EdgeInsets.all(4),
@@ -87,7 +92,7 @@ class LaTeXTextWidget extends StatelessWidget {
                   return SvgPicture.string(
                     svg,
                     colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
-                    height: (defaultTextStyle.fontSize ?? 14) * 2,
+                    height: (defaultTextStyle.fontSize ?? 14) * 1.5,
                     fit: BoxFit.contain,
                     alignment: Alignment.center,
                   );
