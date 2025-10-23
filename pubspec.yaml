@@ -67,3 +67,4 @@ flutter:
   assets:
     - assets/flutter_tex.js
     - assets/flutter_tex.css
+    - assets/images/past_paper_thumbnail.png

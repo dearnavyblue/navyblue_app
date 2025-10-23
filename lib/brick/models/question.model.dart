@@ -26,6 +26,9 @@ class Question extends OfflineFirstWithRestModel {
   @Rest(name: 'contextImages')
   final List<String> contextImages;
 
+  @Rest(name: 'contextTopics')
+  final List<String> contextTopics;
+
   @Rest(name: 'topics')
   final List<String> topics;
 
@@ -85,6 +88,7 @@ class Question extends OfflineFirstWithRestModel {
     required this.questionNumber,
     required this.contextText,
     this.contextImages = const [],
+    this.contextTopics = const [],
     this.topics = const [],
     this.totalMarks,
     required this.orderIndex,
@@ -112,6 +116,7 @@ class Question extends OfflineFirstWithRestModel {
     String? questionNumber,
     String? contextText,
     List<String>? contextImages,
+    List<String>? contextTopics,
     List<String>? topics,
     int? totalMarks,
     int? orderIndex,
@@ -133,6 +138,7 @@ class Question extends OfflineFirstWithRestModel {
       questionNumber: questionNumber ?? this.questionNumber,
       contextText: contextText ?? this.contextText,
       contextImages: contextImages ?? this.contextImages,
+      contextTopics: contextTopics ?? this.contextTopics,
       topics: topics ?? this.topics,
       totalMarks: totalMarks ?? this.totalMarks,
       orderIndex: orderIndex ?? this.orderIndex,
@@ -157,6 +163,7 @@ class Question extends OfflineFirstWithRestModel {
       questionNumber: json['questionNumber'] ?? '',
       contextText: json['contextText'] ?? '',
       contextImages: List<String>.from(json['contextImages'] ?? []),
+      contextTopics: List<String>.from(json['contextTopics'] ?? []),
       topics: List<String>.from(json['topics'] ?? []),
       totalMarks: json['totalMarks'],
       orderIndex: json['orderIndex'] ?? 0,
@@ -192,6 +199,7 @@ class Question extends OfflineFirstWithRestModel {
       'questionNumber': questionNumber,
       'contextText': contextText,
       'contextImages': contextImages,
+      'contextTopics': contextTopics,
       'topics': topics,
       'totalMarks': totalMarks,
       'orderIndex': orderIndex,

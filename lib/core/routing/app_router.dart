@@ -72,7 +72,7 @@ class AuthRouterNotifier extends ChangeNotifier {
       _state = newState;
       print(
           'Auth router state updated: isLoggedIn=${newState.isLoggedIn}, isAdmin=${newState.isAdmin}, isInitialized=${newState.isInitialized}');
-      notifyListeners();
+      notifyListeners(); // This triggers GoRouter to re-evaluate redirect
     }
   }
 }
@@ -99,14 +99,19 @@ final authRouterNotifierProvider =
 });
 
 final goRouterProvider = Provider<GoRouter>((ref) {
+  // Get the auth notifier to use as refreshListenable
+  final authNotifier = ref.watch(authRouterNotifierProvider);
+
   return GoRouter(
     initialLocation: AppConstants.splashRoute,
     navigatorKey: _rootNavigatorKey,
     debugLogDiagnostics: true,
+    refreshListenable:
+        authNotifier, // CRITICAL: Makes router refresh when auth changes
     redirect: (context, state) {
       try {
-        // Directly read auth state - no caching
-        final authState = ref.read(authControllerProvider);
+        // Use the notifier's cached state instead of reading directly
+        final authState = authNotifier.state;
         final path = state.uri.path;
 
         print(

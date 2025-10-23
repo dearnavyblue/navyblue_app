@@ -1,27 +1,29 @@
 // GENERATED CODE DO NOT EDIT
 // This file should be version controlled
 import 'package:brick_sqlite/db.dart';
-part '20251017113207.migration.dart';
+part '20251023121303.migration.dart';
 part '20250906103617.migration.dart';
 part '20250908064003.migration.dart';
 part '20250908073957.migration.dart';
 part '20250908123137.migration.dart';
 part '20250910104207.migration.dart';
 part '20250927103750.migration.dart';
+part '20251017113207.migration.dart';
 
 /// All intelligently-generated migrations from all `@Migratable` classes on disk
 final migrations = <Migration>{
-  const Migration20251017113207(),
+  const Migration20251023121303(),
   const Migration20250906103617(),
   const Migration20250908064003(),
   const Migration20250908073957(),
   const Migration20250908123137(),
   const Migration20250910104207(),
-  const Migration20250927103750()
+  const Migration20250927103750(),
+  const Migration20251017113207()
 };
 
 /// A consumable database structure including the latest generated migration.
-final schema = Schema(20251017113207, generatorVersion: 1, tables: <SchemaTable>{
+final schema = Schema(20251023121303, generatorVersion: 1, tables: <SchemaTable>{
   SchemaTable('ExamPaper', columns: <SchemaColumn>{
     SchemaColumn('_brick_id', Column.integer,
         autoincrement: true, nullable: false, isPrimaryKey: true),
@@ -181,6 +183,7 @@ final schema = Schema(20251017113207, generatorVersion: 1, tables: <SchemaTable>
     SchemaColumn('question_number', Column.varchar),
     SchemaColumn('context_text', Column.varchar),
     SchemaColumn('context_images', Column.varchar),
+    SchemaColumn('context_topics', Column.varchar),
     SchemaColumn('topics', Column.varchar),
     SchemaColumn('total_marks', Column.integer),
     SchemaColumn('order_index', Column.integer),
@@ -269,6 +272,7 @@ final schema = Schema(20251017113207, generatorVersion: 1, tables: <SchemaTable>
     SchemaColumn('parent_part_id', Column.varchar),
     SchemaColumn('part_number', Column.varchar),
     SchemaColumn('part_text', Column.varchar),
+    SchemaColumn('topics', Column.varchar),
     SchemaColumn('marks', Column.integer),
     SchemaColumn('part_images', Column.varchar),
     SchemaColumn('hint_text', Column.varchar),

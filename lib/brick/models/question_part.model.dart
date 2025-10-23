@@ -27,6 +27,9 @@ class QuestionPart extends OfflineFirstWithRestModel {
   @Rest(name: 'partText')
   final String partText;
 
+  @Rest(name: 'topics')
+  final List<String> topics;
+
   @Rest(name: 'marks')
   final int marks;
 
@@ -86,6 +89,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
     this.parentPartId,
     required this.partNumber,
     required this.partText,
+    this.topics = const [],
     this.marks = 0,
     this.partImages = const [],
     this.hintText,
@@ -114,6 +118,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
     String? parentPartId,
     String? partNumber,
     String? partText,
+    List<String>? topics,
     int? marks,
     List<String>? partImages,
     String? hintText,
@@ -135,6 +140,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       parentPartId: parentPartId ?? this.parentPartId,
       partNumber: partNumber ?? this.partNumber,
       partText: partText ?? this.partText,
+      topics: topics ?? this.topics,
       marks: marks ?? this.marks,
       partImages: partImages ?? this.partImages,
       hintText: hintText ?? this.hintText,
@@ -159,6 +165,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       parentPartId: json['parentPartId'],
       partNumber: json['partNumber'] ?? '',
       partText: json['partText'] ?? '',
+      topics: List<String>.from(json['topics'] ?? []),
       marks: json['marks'] ?? 0,
       partImages: List<String>.from(json['partImages'] ?? []),
       hintText: json['hintText'],
@@ -194,6 +201,7 @@ class QuestionPart extends OfflineFirstWithRestModel {
       'parentPartId': parentPartId,
       'partNumber': partNumber,
       'partText': partText,
+      'topics': topics,
       'marks': marks,
       'partImages': partImages,
       'hintText': hintText,

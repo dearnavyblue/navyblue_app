@@ -190,82 +190,69 @@ class HomeController extends StateNotifier<HomeState> {
     for (final entry in attemptsBySubject.entries) {
       final subjectAttempts = entry.value;
 
-      final practiceAttempts =
-          subjectAttempts.where((a) => a.isPracticeMode).toList();
-      final examAttempts = subjectAttempts.where((a) => a.isExamMode).toList();
-
-      final practicePerformance = _calculatePerformanceData(
-        practiceAttempts,
-        stepAttemptsMap,
-        solutionStepsMap,
-        questionPartsMap,
-        questionsMap,
-      );
-
-      final examPerformance = _calculatePerformanceData(
-        examAttempts,
-        stepAttemptsMap,
-        solutionStepsMap,
-        questionPartsMap,
-        questionsMap,
-      );
-
-      // OPTIMIZATION: Calculate average more efficiently
-      var totalScore = 0.0;
-      var scoreCount = 0;
+      // Group by paper type
+      final paperTypeData = <String, PaperProgress>{};
+      final attemptsByPaperType = <String, List<StudentAttempt>>{};
+      
       for (final attempt in subjectAttempts) {
-        if (attempt.percentageScore != null) {
-          totalScore += attempt.percentageScore!;
-          scoreCount++;
-        }
+        final paper = paperMap[attempt.paperId];
+        if (paper == null) continue;
+        
+        final paperType = paper.paperType;
+        (attemptsByPaperType[paperType] ??= []).add(attempt);
       }
-      final overallScore = scoreCount > 0 ? totalScore / scoreCount : 0.0;
 
-      final readinessLevel = _getReadinessLevel(overallScore);
+      // Calculate progress for each paper type
+      for (final paperEntry in attemptsByPaperType.entries) {
+        final paperType = paperEntry.key;
+        final paperAttempts = paperEntry.value;
 
-      subjects[entry.key] = SubjectProgress(
-        overallReadiness: overallScore.round(),
-        readinessLevel: readinessLevel,
-        practicePerformance: practicePerformance,
-        examPerformance: examPerformance,
-      );
+        // Calculate average score for this paper type
+        var totalScore = 0.0;
+        var scoreCount = 0;
+        for (final attempt in paperAttempts) {
+          if (attempt.percentageScore != null) {
+            totalScore += attempt.percentageScore!;
+            scoreCount++;
+          }
+        }
+        final averageScore = scoreCount > 0 ? totalScore / scoreCount : 0.0;
+
+        // Calculate topic breakdown for this paper type
+        final topicsData = _calculateTopicsForPaperType(
+          paperAttempts,
+          stepAttemptsMap,
+          solutionStepsMap,
+          questionPartsMap,
+          questionsMap,
+        );
+
+        paperTypeData[paperType] = PaperProgress(
+          averageScore: averageScore,
+          totalAttempts: paperAttempts.length,
+          topics: topicsData,
+        );
+      }
+
+      subjects[entry.key] = SubjectProgress(papers: paperTypeData);
     }
 
     return ProgressSummary(
       subjects: subjects,
       hasData: true,
+      lastUpdated: DateTime.now(),
     );
   }
 
-  PerformanceData _calculatePerformanceData(
+  Map<String, TopicProgress> _calculateTopicsForPaperType(
     List<StudentAttempt> attempts,
     Map<String, List<StepAttempt>> stepAttemptsMap,
     Map<String, SolutionStep> solutionStepsMap,
     Map<String, QuestionPart> questionPartsMap,
     Map<String, Question> questionsMap,
   ) {
-    if (attempts.isEmpty) {
-      return const PerformanceData(
-        averageScore: 0.0,
-        attempts: 0,
-        topicBreakdown: [],
-      );
-    }
-
-    // OPTIMIZATION: Calculate average more efficiently
-    var totalScore = 0.0;
-    var scoreCount = 0;
-    for (final attempt in attempts) {
-      if (attempt.percentageScore != null) {
-        totalScore += attempt.percentageScore!;
-        scoreCount++;
-      }
-    }
-    final averageScore = scoreCount > 0 ? totalScore / scoreCount : 0.0;
-
-    // OPTIMIZATION: Aggregate topic data efficiently
-    final topicScores = <String, List<double>>{};
-    final topicCounts = <String, int>{};
+    // Structure: mainTopic -> { subtopic -> {correct, total} }
+    final topicData = <String, Map<String, _TopicStats>>{};
 
     for (final attempt in attempts) {
       final attemptSteps = stepAttemptsMap[attempt.id];
@@ -275,52 +262,78 @@ class HomeController extends StateNotifier<HomeState> {
         final solutionStep = solutionStepsMap[stepAttempt.stepId];
         if (solutionStep == null) continue;
 
-        final questionPart = questionPartsMap[solutionStep.partId];
-        if (questionPart == null) continue;
+        final isCorrect = stepAttempt.status == 'CORRECT';
 
-        final question = questionsMap[questionPart.questionId];
-        if (question == null || question.topics.isEmpty) continue;
+        // Get topics from part or question
+        List<String> topics = [];
+        if (solutionStep.partId != null) {
+          final part = questionPartsMap[solutionStep.partId];
+          topics = part?.topics ?? [];
+        } else if (solutionStep.questionId != null) {
+          final question = questionsMap[solutionStep.questionId];
+          topics = question?.topics ?? [];
+        }
 
-        final stepScore = stepAttempt.isCorrect ? 100.0 : 0.0;
+        // Process each topic with hierarchy
+        for (final topicPath in topics) {
+          final parts = topicPath.split('.');
+          final mainTopic = parts[0];
+          final subtopicPath = parts.length > 1 ? parts.sublist(1).join('.') : null;
 
-        for (final topic in question.topics) {
-          (topicScores[topic] ??= []).add(stepScore);
-          topicCounts[topic] = (topicCounts[topic] ?? 0) + 1;
+          // Initialize main topic if needed
+          if (!topicData.containsKey(mainTopic)) {
+            topicData[mainTopic] = {};
+          }
+
+          // Update main topic stats
+          final mainTopicStats = topicData[mainTopic]!;
+          if (!mainTopicStats.containsKey('_main')) {
+            mainTopicStats['_main'] = _TopicStats();
+          }
+          mainTopicStats['_main']!.total++;
+          if (isCorrect) mainTopicStats['_main']!.correct++;
+
+          // Update subtopic stats if exists
+          if (subtopicPath != null) {
+            if (!mainTopicStats.containsKey(subtopicPath)) {
+              mainTopicStats[subtopicPath] = _TopicStats();
+            }
+            mainTopicStats[subtopicPath]!.total++;
+            if (isCorrect) mainTopicStats[subtopicPath]!.correct++;
+          }
         }
       }
     }
 
-    // Build topic breakdown
-    final topicBreakdown = topicScores.entries.map((entry) {
-      final scores = entry.value;
-      final avgScore = scores.isNotEmpty
-          ? scores.reduce((a, b) => a + b) / scores.length
+    // Convert to TopicProgress map
+    final result = <String, TopicProgress>{};
+    for (final entry in topicData.entries) {
+      final mainTopic = entry.key;
+      final subtopicsData = entry.value;
+
+      final mainStats = subtopicsData['_main']!;
+      final mainPerformance = mainStats.total > 0 
+          ? (mainStats.correct / mainStats.total) * 100 
           : 0.0;
-      final totalAttempted = topicCounts[entry.key] ?? 0;
-      final totalCorrect = scores.where((s) => s == 100.0).length;
 
-      return TopicBreakdown(
-        topic: entry.key,
-        overallAccuracy: avgScore,
-        totalAttempted: totalAttempted,
-        totalCorrect: totalCorrect,
-        totalMarksEarned: totalCorrect, // Simplified calculation
-        status: _getReadinessLevel(avgScore),
+      final breakdown = <String, double>{};
+      for (final subtopicEntry in subtopicsData.entries) {
+        if (subtopicEntry.key == '_main') continue;
+        
+        final stats = subtopicEntry.value;
+        final performance = stats.total > 0 
+            ? (stats.correct / stats.total) * 100 
+            : 0.0;
+        breakdown[subtopicEntry.key] = performance;
+      }
+
+      result[mainTopic] = TopicProgress(
+        performance: mainPerformance,
+        breakdown: breakdown,
       );
-    }).toList();
+    }
 
-    return PerformanceData(
-      averageScore: averageScore,
-      attempts: attempts.length,
-      topicBreakdown: topicBreakdown,
-    );
-  }
-
-  String _getReadinessLevel(double score) {
-    if (score >= 80) return 'Excellent';
-    if (score >= 65) return 'Good';
-    if (score >= 50) return 'Fair';
-    return 'Needs Work';
+    return result;
   }
 
   Future<void> _syncDashboardDataWithServer() async {
@@ -400,4 +413,10 @@ class HomeController extends StateNotifier<HomeState> {
       await _syncDashboardDataWithServer();
     }
   }
+}
+
+// Helper class for tracking topic statistics
+class _TopicStats {
+  int correct = 0;
+  int total = 0;
 }

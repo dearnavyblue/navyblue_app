@@ -29,6 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   bool _hasLoadedOnce = false;
   String? _selectedSubject;
+  String? _selectedPaper;
   int _lastAttemptCount = 0;
   DateTime? _lastRefreshTime;
   Timer? _debounceTimer;
@@ -103,6 +104,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Set default selected subject if none is selected
     if (_selectedSubject == null && state.progressSummary != null) {
       _selectedSubject = state.progressSummary!.subjects.keys.first;
+
+      // Set default selected paper (first paper of the selected subject)
+      if (_selectedPaper == null && _selectedSubject != null) {
+        final subjectProgress =
+            state.progressSummary!.subjects[_selectedSubject!];
+        if (subjectProgress != null && subjectProgress.papers.isNotEmpty) {
+          _selectedPaper = subjectProgress.papers.keys.first;
+        }
+      }
     }
 
     final isInitialLoading =
@@ -126,7 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             else
               SliverList(
                 delegate: SliverChildListDelegate([
-                 Padding(
+                  Padding(
                     padding:
                         const EdgeInsets.fromLTRB(0, 0, 0, 0), // page margin
                     child: Material(
@@ -135,7 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           Clip.antiAlias, // clip gradient/pattern to radius
                       child: GreetingBar(
                         displayName:
-                            authState.user?.firstName?.trim() ?? 'Student',
+                            authState.user?.firstName.trim() ?? 'Student',
                         pattern: CornerPattern
                             .cornerDots, // or cornerChevrons / none
                         patternOpacity: 0.06,
@@ -236,16 +246,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
-                 crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'In Progress',
-                     style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                   Text(
+                  Text(
                     'Continue where you left off',
                     style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -522,7 +532,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     bool isPrimary = false,
   }) {
     final gradients = theme.extension<GradientColors>()!;
-    
+
     return Card(
       elevation: isPrimary ? 4 : 2,
       child: InkWell(
@@ -624,7 +634,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final subjects = state.progressSummary!.subjects;
     final selectedProgress =
         _selectedSubject != null ? subjects[_selectedSubject] : null;
-        final txt = Theme.of(context).extension<AppTextStyles>()!;
+    final txt = Theme.of(context).extension<AppTextStyles>()!;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -643,9 +653,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Text(
             'See how ready you are for the exams',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500
-            ),
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 16),
 
@@ -661,6 +670,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     onTap: () {
                       setState(() {
                         _selectedSubject = subject;
+                        // Auto-select first paper of the new subject
+                        final subjectProgress = subjects[subject];
+                        if (subjectProgress != null &&
+                            subjectProgress.papers.isNotEmpty) {
+                          _selectedPaper = subjectProgress.papers.keys.first;
+                        } else {
+                          _selectedPaper = null;
+                        }
                       });
                     },
                     borderRadius: BorderRadius.circular(24),
@@ -691,153 +708,206 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const SizedBox(height: 12),
 
           // Selected Subject Content
-          if (selectedProgress != null)
-            Card(
-               margin: EdgeInsets.zero,  
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Subject Header with Status Badge and % Ready
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Text(
-                                AppConfig.getSubjectDisplayName(
-                                    _selectedSubject!),
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const Spacer(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _statusColor(
-                                context, selectedProgress.readinessLevel),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            selectedProgress.readinessLevel,
-                            style: txt.extraSmall.copyWith(
-                              color: theme.colorScheme.onPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+          if (selectedProgress != null && _selectedPaper != null)
+            _buildSubjectCard(theme, selectedProgress),
+        ],
+      ),
+    );
+  }
 
-                    // Overall Progress Bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: selectedProgress.overallReadiness / 100,
-                        minHeight: 5,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation(
-                          selectedProgress.overallReadiness > 0
-                              ? _statusColor(
-                                  context, selectedProgress.readinessLevel)
-                              : theme.colorScheme.outline,
+  Widget _buildSubjectCard(ThemeData theme, dynamic subjectProgress) {
+    final txt = Theme.of(context).extension<AppTextStyles>()!;
+    final papers = subjectProgress.papers as Map<String, dynamic>;
+
+    // Calculate overall readiness from all papers
+    double totalScore = 0;
+    int paperCount = 0;
+    for (var paper in papers.values) {
+      totalScore += (paper.averageScore ?? 0.0);
+      paperCount++;
+    }
+    final overallReadiness = paperCount > 0 ? totalScore / paperCount : 0.0;
+    final readinessLevel = _getReadinessLevelFromScore(overallReadiness);
+
+    // Get selected paper data
+    final selectedPaperProgress = papers[_selectedPaper];
+    if (selectedPaperProgress == null) return const SizedBox.shrink();
+
+    final topics = selectedPaperProgress.topics as Map<String, dynamic>;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Subject Header with Status Badge and % Ready
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        AppConfig.getSubjectDisplayName(_selectedSubject!),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Papers Section - Always show Paper 1 and Paper 2
-                    Row(
-                      children: [
-                        // Paper 1
-                        Expanded(
-                          child: _buildPaperProgress(
-                            theme,
-                            'Paper 1',
-                            selectedProgress.practicePerformance.averageScore,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Paper 2
-                        Expanded(
-                          child: _buildPaperProgress(
-                            theme,
-                            'Paper 2',
-                            selectedProgress.examPerformance.averageScore,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Topics Breakdown
-                    if (selectedProgress
-                        .practicePerformance.topicBreakdown.isNotEmpty) ...[
-                      ...selectedProgress.practicePerformance.topicBreakdown
-                          .map((topic) {
-                        final topicAccuracy = topic.overallAccuracy;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Topic name with % Ready
-                              Row(
-                                children: [
-                                  Text(
-                                    topic.topic,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                       color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    '${topicAccuracy.toInt()}%',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: topicAccuracy / 100,
-                                  minHeight: 5,
-                                  backgroundColor:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    topicAccuracy > 0
-                                        ? _statusColor(context, topic.status)
-                                        : theme.colorScheme.outline,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                      const Spacer(),
                     ],
-                  ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusColor(context, readinessLevel),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    readinessLevel,
+                    style: txt.extraSmall.copyWith(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Overall Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: overallReadiness / 100,
+                minHeight: 5,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(
+                  overallReadiness > 0
+                      ? _statusColor(context, readinessLevel)
+                      : theme.colorScheme.outline,
                 ),
               ),
             ),
-        ],
+            const SizedBox(height: 16),
+
+            // Papers Section - Show all papers with click functionality
+            Row(
+              children: papers.entries.map((entry) {
+                final paperType = entry.key;
+                final paperProgress = entry.value;
+                final isSelected = _selectedPaper == paperType;
+                final paperName = paperType
+                    .split('_')
+                    .map((word) =>
+                        word[0].toUpperCase() + word.substring(1).toLowerCase())
+                    .join(' ');
+
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                        right: entry.key != papers.keys.last ? 12 : 0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedPaper = paperType;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? theme.colorScheme.primaryContainer
+                                  .withOpacity(0.3)
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
+                          border: isSelected
+                              ? Border.all(
+                                  color: theme.colorScheme.primary,
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: _buildPaperProgress(
+                          theme,
+                          paperName,
+                          paperProgress.averageScore ?? 0.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Topics Breakdown for selected paper
+            if (topics.isNotEmpty) ...[
+              ...topics.entries.map((entry) {
+                final topicName = entry.key;
+                final topicProgress = entry.value;
+                final topicAccuracy = topicProgress.performance ?? 0.0;
+                final topicDisplayName = topicName
+                    .split('_')
+                    .map((word) =>
+                        word[0].toUpperCase() + word.substring(1).toLowerCase())
+                    .join(' ');
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Topic name with % Ready
+                      Row(
+                        children: [
+                          Text(
+                            topicDisplayName,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${topicAccuracy.toInt()}%',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: topicAccuracy / 100,
+                          minHeight: 5,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation(
+                            topicAccuracy > 0
+                                ? _statusColor(context,
+                                    _getReadinessLevelFromScore(topicAccuracy))
+                                : theme.colorScheme.outline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -851,7 +921,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Text(
               paperName,
               style: theme.textTheme.bodySmall?.copyWith(
-                 color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -934,7 +1004,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         isExam ? scheme.tertiaryContainer : scheme.secondaryContainer;
     final onContainer =
         isExam ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
-
 
     return Card(
       child: InkWell(
@@ -1079,7 +1148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return 'Good evening';
   }
 
-Color _statusColor(BuildContext context, String level) {
+  Color _statusColor(BuildContext context, String level) {
     final status = Theme.of(context).extension<StatusColors>()!;
     switch (level.toLowerCase()) {
       case 'excellent':

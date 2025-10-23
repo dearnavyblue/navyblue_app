@@ -26,9 +26,10 @@ class AuthState {
     String? error,
     bool? isInitialized,
     bool? isOffline,
+    bool clearUser = false, // Add flag to explicitly clear user
   }) {
     return AuthState(
-      user: user ?? this.user,
+      user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
       error: error,
       isInitialized: isInitialized ?? this.isInitialized,
@@ -262,30 +263,37 @@ class AuthController extends StateNotifier<AuthState> {
         await logoutUseCase();
       } catch (e) {
         // Continue with local logout even if server logout fails
+        print('Server logout failed: $e');
       }
     }
 
     try {
+      // Delete user from local storage completely
       if (state.user != null) {
-        final clearedUser = state.user!.clearAuthTokens();
-        await _repository.upsert<User>(clearedUser);
-        state = state.copyWith(
-          user: clearedUser,
-          isLoading: false,
-          error: null,
-        );
-      } else {
-        state = state.copyWith(
-          user: null,
-          isLoading: false,
-          error: null,
-        );
+        await _repository.delete<User>(state.user!);
       }
-    } catch (e) {
-      state = state.copyWith(
+
+      // CRITICAL: Set user to NULL (not a cleared user object)
+      // This ensures isLoggedIn returns false
+      state = const AuthState(
         user: null,
         isLoading: false,
         error: null,
+        isInitialized: true,
+        isOffline: false,
+      );
+
+      print(
+          '✓ Logout complete - user set to null, isLoggedIn: ${state.isLoggedIn}');
+    } catch (e) {
+      print('Local logout error: $e');
+      // Even if deletion fails, clear the user from state
+      state = const AuthState(
+        user: null,
+        isLoading: false,
+        error: null,
+        isInitialized: true,
+        isOffline: false,
       );
     }
   }
