@@ -32,10 +32,14 @@ class LaTeXTextWidget extends StatelessWidget {
       );
     }
 
+    final blendedWeight =
+        FontWeight.lerp(FontWeight.w300, FontWeight.w400, 0.5);
+
     final defaultTextStyle =
         style ??
-        GoogleFonts.crimsonText(
-          fontWeight: FontWeight.w500,
+        GoogleFonts.crimsonPro(
+          fontWeight: blendedWeight ?? FontWeight.w400,
+          height: 1.35,
         ) ??
         const TextStyle();
     final textColor = defaultTextStyle.color ??
@@ -123,27 +127,16 @@ class LaTeXTextWidget extends StatelessWidget {
   }
 
   bool _hasLatex(String text) {
-    return text.contains(r'$') ||
-        text.contains(r'\(') ||
-        text.contains(r'\[') ||
-        text.contains(r'\\') ||
-        text.contains(r'\begin') ||
-        text.contains(r'\frac') ||
-        text.contains(r'\sqrt') ||
-        text.contains(r'\alpha') ||
-        text.contains(r'\beta') ||
-        text.contains(r'\gamma') ||
-        text.contains(r'\delta') ||
-        text.contains(r'\theta') ||
-        text.contains(r'\pi') ||
-        text.contains(r'\sigma') ||
-        text.contains(r'\omega') ||
-        text.contains(r'\times') ||
-        text.contains(r'\div') ||
-        text.contains(r'\pm') ||
-        text.contains(r'\neq') ||
-        text.contains(r'\leq') ||
-        text.contains(r'\geq');
+    if (text.contains(r'$')) return true;
+    const triggers = [
+      r'\(',
+      r'\)',
+      r'\[',
+      r'\]',
+      r'\begin{',
+      r'\end{',
+    ];
+    return triggers.any(text.contains);
   }
 }
 

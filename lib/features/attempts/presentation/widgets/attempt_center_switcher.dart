@@ -103,110 +103,111 @@ class _AttemptCenterSwitcher extends StatelessWidget {
     // We draw the rounded "pill" ourselves behind the SegmentedButton.
     // The SegmentedButton itself gets a transparent background, so the pill
     // shows through and remains fully rounded on ALL sides.
-    return SizedBox(
-      height: 36, // tweak if you want a taller pill
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // 1) Light grey capsule container
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: inactiveBg,
-                borderRadius: BorderRadius.circular(20),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: SizedBox(
+        height: 34, // align height with filters
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 1) Light grey capsule container
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: inactiveBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
-          ),
-
-          // 2) Sliding black pill behind the selected segment
-          Positioned.fill(
-            child: AnimatedAlign(
-              alignment: selectedIndex == 0
-                  ? Alignment.centerLeft
-                  : Alignment.centerRight,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              child: FractionallySizedBox(
-                widthFactor: 0.5, // two segments → half width
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: activeBg,
-                    borderRadius: BorderRadius.circular(20), // fully rounded
+            // 2) Sliding black pill behind the selected segment
+            Positioned.fill(
+              child: AnimatedAlign(
+                alignment: selectedIndex == 0
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: FractionallySizedBox(
+                  widthFactor: 0.5, // two segments -> half width
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: activeBg,
+                      borderRadius: BorderRadius.circular(20), // fully rounded
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-
-          // 3) SegmentedButton (transparent background, text colors only)
-          Theme(
-            data: theme.copyWith(
-              segmentedButtonTheme: SegmentedButtonThemeData(
-                style: ButtonStyle(
-                  shape: const MaterialStatePropertyAll(StadiumBorder()),
-                  padding: const MaterialStatePropertyAll(
-                    EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            // 3) SegmentedButton (transparent background, text colors only)
+            Theme(
+              data: theme.copyWith(
+                segmentedButtonTheme: SegmentedButtonThemeData(
+                  style: ButtonStyle(
+                    shape: const MaterialStatePropertyAll(StadiumBorder()),
+                    padding: const MaterialStatePropertyAll(
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                    // transparent so our custom pill is visible
+                    backgroundColor:
+                        const MaterialStatePropertyAll(Colors.transparent),
+                    side: const MaterialStatePropertyAll(
+                        BorderSide(color: Colors.transparent)),
+                    overlayColor:
+                        const MaterialStatePropertyAll(Colors.transparent),
+                    // set label colors to contrast with our backgrounds
+                    foregroundColor:
+                        MaterialStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(MaterialState.disabled)) {
+                        return inactiveFg;
+                      }
+                      final selected =
+                          states.contains(MaterialState.selected);
+                      return selected ? activeFg : inactiveFg;
+                    }),
                   ),
-                  // transparent so our custom pill is visible
-                  backgroundColor:
-                      const MaterialStatePropertyAll(Colors.transparent),
-                  side: const MaterialStatePropertyAll(
-                      BorderSide(color: Colors.transparent)),
-                  overlayColor:
-                      const MaterialStatePropertyAll(Colors.transparent),
-                  // set label colors to contrast with our backgrounds
-                  foregroundColor:
-                      MaterialStateProperty.resolveWith<Color?>((states) {
-                    if (states.contains(MaterialState.disabled)) {
-                      return inactiveFg;
-                    }
-                    final selected = states.contains(MaterialState.selected);
-                    return selected ? activeFg : inactiveFg;
-                  }),
                 ),
               ),
-            ),
-            child: SegmentedButton<int>(
-              multiSelectionEnabled: false,
-              showSelectedIcon: false,
-              segments: <ButtonSegment<int>>[
-                const ButtonSegment<int>(value: 0, label: Text('Paper')),
-                // keep enabled + guard so behavior stays unchanged
-                ButtonSegment<int>(
-                  value: 1,
-                  label: const Text('Memo'),
-                  enabled: memoEnabled,
-                ),
-              ],
-              selected: {selectedIndex.clamp(0, 1)},
-              onSelectionChanged: (set) {
-                final value = set.first;
-                if (value == 1 && !memoEnabled) return; // safety guard
-                onChanged(value);
-              },
-            ),
-          ),
-
-          // 4) Tooltip overlay when Memo is locked (purely visual)
-          if (!memoEnabled)
-            FractionallySizedBox(
-              widthFactor: 0.5,
-              alignment: Alignment.centerRight,
-              child: Tooltip(
-                message: 'Available after exam time',
-                preferBelow: false,
-                waitDuration: const Duration(milliseconds: 250),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap:
-                      () {}, // swallow taps, show only tooltip on long-press/hover
-                  onLongPress: () {}, // (hover shows tooltip on desktop)
-                  child: const SizedBox.expand(),
-                ),
+              child: SegmentedButton<int>(
+                multiSelectionEnabled: false,
+                showSelectedIcon: false,
+                segments: <ButtonSegment<int>>[
+                  const ButtonSegment<int>(value: 0, label: Text('Paper')),
+                  // keep enabled + guard so behavior stays unchanged
+                  ButtonSegment<int>(
+                    value: 1,
+                    label: const Text('Memo'),
+                    enabled: memoEnabled,
+                  ),
+                ],
+                selected: {selectedIndex.clamp(0, 1)},
+                onSelectionChanged: (set) {
+                  final value = set.first;
+                  if (value == 1 && !memoEnabled) return; // safety guard
+                  onChanged(value);
+                },
               ),
             ),
-        ],
+            // 4) Tooltip overlay when Memo is locked (purely visual)
+            if (!memoEnabled)
+              FractionallySizedBox(
+                widthFactor: 0.5,
+                alignment: Alignment.centerRight,
+                child: Tooltip(
+                  message: 'Available after exam time',
+                  preferBelow: false,
+                  waitDuration: const Duration(milliseconds: 250),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap:
+                        () {}, // swallow taps, show only tooltip on long-press/hover
+                    onLongPress: () {}, // (hover shows tooltip on desktop)
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

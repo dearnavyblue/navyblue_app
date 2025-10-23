@@ -30,15 +30,22 @@ class PaperPageScaffold extends StatelessWidget {
     final sheetMaxWidth =
         media.size.width.clamp(0, 720.0) - (horizontalMargin * 2);
 
-    // Apply Crimson Text only inside the sheet
+    final paperFontWeight =
+        FontWeight.lerp(FontWeight.w300, FontWeight.w400, 0.5) ??
+            FontWeight.w400;
+
+    // Apply Crimson Pro (blended weight) only inside the sheet
     final Widget inner = usePaperFont
         ? Theme(
             data: theme.copyWith(
-              textTheme: GoogleFonts.crimsonTextTextTheme(theme.textTheme),
+              textTheme:
+                  _crimsonProBlendedTextTheme(theme.textTheme, paperFontWeight),
             ),
             child: DefaultTextStyle.merge(
-              style:
-                  GoogleFonts.crimsonText(), // catches raw Text without theme
+              style: GoogleFonts.crimsonPro(
+                fontWeight: paperFontWeight,
+                height: 1.4, // comfortable book-like leading
+              ), // catches raw Text without theme
               child: child,
             ),
           )
@@ -76,4 +83,31 @@ class PaperPageScaffold extends StatelessWidget {
       ),
     );
   }
+}
+
+TextTheme _crimsonProBlendedTextTheme(TextTheme base, FontWeight weight) {
+  final crimsonPro = GoogleFonts.crimsonProTextTheme(base);
+  TextStyle? enhance(TextStyle? style) => style?.copyWith(
+        fontWeight: weight,
+        height: style?.height ?? 1.35,
+        letterSpacing: style?.letterSpacing ?? 0.2,
+      );
+
+  return TextTheme(
+    displayLarge: enhance(crimsonPro.displayLarge),
+    displayMedium: enhance(crimsonPro.displayMedium),
+    displaySmall: enhance(crimsonPro.displaySmall),
+    headlineLarge: enhance(crimsonPro.headlineLarge),
+    headlineMedium: enhance(crimsonPro.headlineMedium),
+    headlineSmall: enhance(crimsonPro.headlineSmall),
+    titleLarge: enhance(crimsonPro.titleLarge),
+    titleMedium: enhance(crimsonPro.titleMedium),
+    titleSmall: enhance(crimsonPro.titleSmall),
+    bodyLarge: enhance(crimsonPro.bodyLarge),
+    bodyMedium: enhance(crimsonPro.bodyMedium),
+    bodySmall: enhance(crimsonPro.bodySmall),
+    labelLarge: enhance(crimsonPro.labelLarge),
+    labelMedium: enhance(crimsonPro.labelMedium),
+    labelSmall: enhance(crimsonPro.labelSmall),
+  );
 }
