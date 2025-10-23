@@ -37,12 +37,15 @@ class PaperTabWidget extends StatelessWidget {
     return hasContext && !hasOwnPrompt && !hasOwnMcq && q.isMultiPartQuestion;
   }
 
-  TextStyle _marksStyle(BuildContext context) =>
+  TextStyle _marksStyle(BuildContext context, {bool bold = false}) =>
       Theme.of(context).textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.normal,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ) ??
-      const TextStyle(fontSize: 12, fontWeight: FontWeight.w400);
+      TextStyle(
+        fontSize: 12,
+        fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+      );
 
   const PaperTabWidget({
     super.key,
@@ -221,10 +224,10 @@ class PaperTabWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            'QUESTION $number',
+            'Question $number',
             style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.15,
             ),
           ),
           if (secondary != null) ...[
@@ -326,8 +329,10 @@ class PaperTabWidget extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(_brackets(question.totalMarks),
-                      style: _marksStyle(context)),
+                  Text(
+                    _brackets(question.totalMarks),
+                    style: _marksStyle(context, bold: true),
+                  ),
                 ],
               ),
             ),

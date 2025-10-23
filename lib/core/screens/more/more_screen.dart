@@ -52,6 +52,11 @@ class MoreScreen extends ConsumerWidget {
 
             // App Info
             _buildAppInfoCard(context, theme),
+            const SizedBox(height: 24),
+
+// Message only (no share)
+            _buildMissionMessageCard(context, theme),
+       
 
             const SizedBox(height: 32),
 
@@ -392,6 +397,37 @@ class MoreScreen extends ConsumerWidget {
           foregroundColor: theme.colorScheme.onErrorContainer,
           padding: const EdgeInsets.symmetric(vertical: 16),
           elevation: 2,
+        ),
+      ),
+    );
+  }
+
+Widget _buildMissionMessageCard(BuildContext context, ThemeData theme) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Why we built ${AppConfig.appName}',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Every South African learner deserves a fair shot. '
+              'We made ${AppConfig.appName} to help you practise smarter for Maths and Physical Sciences — '
+              'clear steps, solid working, and a little less stress before exams. '
+              'Keep going — your future self will thank you.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+          ],
         ),
       ),
     );

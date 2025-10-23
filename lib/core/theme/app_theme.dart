@@ -1,5 +1,6 @@
 // app_theme.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
 /// --- Custom Extensions ---
@@ -298,12 +299,13 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-       fontFamily: 'Inter',
-        textTheme:
-          Typography.material2021(platform: TargetPlatform.android).black.apply(
-                bodyColor: scheme.onSurface,
-                displayColor: scheme.onSurface,
-              ),
+      fontFamily: GoogleFonts.inter().fontFamily,
+      textTheme: GoogleFonts.interTextTheme(
+        Typography.material2021(platform: TargetPlatform.android).black.apply(
+          bodyColor: scheme.onSurface,
+          displayColor: scheme.onSurface,
+        ),
+      ),
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
