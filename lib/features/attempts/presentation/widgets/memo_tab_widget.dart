@@ -1,5 +1,6 @@
 // lib/features/attempts/presentation/widgets/memo_tab_widget.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import 'package:navyblue_app/core/widgets/latex_text_widget.dart';
 import '../../../../brick/models/question.model.dart';
 import '../../../../core/widgets/network_image_widget.dart';
@@ -39,60 +40,106 @@ class MemoTabWidget extends StatelessWidget {
     required this.isOnInstructionsPage,
   });
 
-  @override
+@override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: questions
-                  .map((q) => _buildQuestionSection(context, q))
-                  .toList(),
-            ),
+    return BottomBar(
+      // ↓ Use barColor to control the pill’s background (fixes black default)
+      barColor: theme.colorScheme.surface, // highlighted bg
+      width: MediaQuery.of(context).size.width - 32, // 16 margin each side
+      offset: 16, // 16 all around
+      borderRadius: BorderRadius.circular(999), // fully rounded pill
+      barDecoration: BoxDecoration(
+        // optional extras
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
-        ),
+        ],
+      ),
+      barAlignment: Alignment.bottomCenter,
+      showIcon: false,
+      hideOnScroll: true,
+      respectSafeArea: true,
 
-        // Footer nav
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            border: Border(
-              top: BorderSide(color: theme.colorScheme.outlineVariant),
+      // Page body wired to controller
+      body: (context, controller) => Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: controller,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: questions
+                    .map((q) => _buildQuestionSection(context, q))
+                    .toList(),
+              ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ],
+      ),
+
+      // Bar content: arrows near ends; compact padding
+      child: Padding(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // smaller
+        child: SizedBox(
+          height: 28, // slightly shorter
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              TextButton.icon(
-                onPressed: canGoToPrevious ? onPreviousPage : null,
-                icon: const Icon(Icons.chevron_left),
-                label: const Text('Previous'),
-              ),
-              Text(
-                pageDisplayText,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              // Left chevron (tight to edge)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
+                  onPressed: canGoToPrevious ? onPreviousPage : null,
+                  color: theme.colorScheme.onPrimaryContainer,
+                  icon: const Icon(Icons.chevron_left),
+                  tooltip: 'Previous',
                 ),
               ),
-              TextButton.icon(
-                onPressed: canGoToNext ? onNextPage : null,
-                icon: const Icon(Icons.chevron_right),
-                label: const Text('Next'),
+
+              // Center page text
+              Align(
+                alignment: Alignment.center,
+                child: Text(
+                  'Page ${currentPage + 1} / $totalPages',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+
+              // Right chevron (tight to edge)
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
+                  onPressed: canGoToNext ? onNextPage : null,
+                  color: theme.colorScheme.onPrimaryContainer,
+                  icon: const Icon(Icons.chevron_right),
+                  tooltip: 'Next',
+                ),
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
-  // ===== Question header (NO context rendering) =====
+  // ===== Question header (no context) =====
   Widget _buildQuestionSection(BuildContext context, Question question) {
     final theme = Theme.of(context);
     final totalMarks = _totalQuestionMarks(question);
@@ -124,7 +171,7 @@ class MemoTabWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Only render parts/subparts (no simple-question steps)
+          // Only render parts/subparts (context removed earlier)
           if (question.parts.isNotEmpty)
             Column(
               children: question.organizedParts.map((part) {
@@ -150,7 +197,7 @@ class MemoTabWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Part header — JUST THE NUMBER
+                        // Part header — number only
                         Row(
                           children: [
                             Expanded(
@@ -174,10 +221,10 @@ class MemoTabWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
 
-                        // Part steps (no grey), with conditional right rail
+                        // Steps list
                         _buildStepsRows(context, steps: part.solutionSteps),
 
-                        // Subparts (still inside the part card)
+                        // Subparts
                         if (part.subParts.isNotEmpty)
                           ...part.subParts.map((sp) {
                             final earnedSp = _calculatePartMarks(sp);
@@ -210,8 +257,10 @@ class MemoTabWidget extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 6),
-                                  _buildStepsRows(context,
-                                      steps: sp.solutionSteps),
+                                  _buildStepsRows(
+                                    context,
+                                    steps: sp.solutionSteps,
+                                  ),
                                 ],
                               ),
                             );
@@ -247,10 +296,10 @@ class MemoTabWidget extends StatelessWidget {
           final isLast = index == steps.length - 1;
           final status = stepStatuses[step.id] ?? 'NOT_ATTEMPTED';
           final int marks = step.marksForThisStep ?? 0;
-          final bool showRail = marks > 0; // 1) no checkmarks if no marks
+          final bool showRail = marks > 0;
 
-          // Light, legible background per status (left column only)
-          Color? leftBg = Colors.transparent;
+          // Subtle status tint on left content only
+          Color leftBg = Colors.transparent;
           if (marks > 0 && status == 'CORRECT') {
             leftBg = Colors.green.withOpacity(0.10);
           } else if (marks > 0 && status == 'INCORRECT') {
@@ -260,9 +309,9 @@ class MemoTabWidget extends StatelessWidget {
           return Column(
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start, // rail at top
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // LEFT content column (text + right-aligned marks)
+                  // LEFT (text + right-aligned, italic marks)
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -271,8 +320,7 @@ class MemoTabWidget extends StatelessWidget {
                       child: _buildStepLeftContent(context, step),
                     ),
                   ),
-
-                  // RIGHT gutter rail — only when marks > 0
+                  // RIGHT rail only when marks > 0
                   if (showRail)
                     Container(
                       width: railWidth,
@@ -282,13 +330,14 @@ class MemoTabWidget extends StatelessWidget {
                     ),
                 ],
               ),
-
-              // FULL-WIDTH divider (across left + rail)
               if (!isLast)
                 Divider(
                   height: 1,
                   thickness: 1,
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.6),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withOpacity(0.6),
                 ),
             ],
           );
@@ -301,7 +350,6 @@ class MemoTabWidget extends StatelessWidget {
   Widget _buildStepLeftContent(BuildContext context, dynamic step) {
     final theme = Theme.of(context);
     final int marks = step.marksForThisStep ?? 0;
-
     final String marksLabel =
         marks > 0 ? (marks == 1 ? '1 mark' : '$marks marks') : '0 marks';
 
@@ -311,7 +359,6 @@ class MemoTabWidget extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Step text (wraps)
             Expanded(
               child: LaTeXTextWidget(
                 text: step.description,
@@ -319,7 +366,6 @@ class MemoTabWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // 2) marks label right-most & italic
             Text(
               '[$marksLabel]',
               textAlign: TextAlign.right,
@@ -331,8 +377,6 @@ class MemoTabWidget extends StatelessWidget {
             ),
           ],
         ),
-
-        // Working out (optional)
         if (step.workingOut != null && step.workingOut!.isNotEmpty) ...[
           const SizedBox(height: 6),
           LaTeXTextWidget(
@@ -344,8 +388,6 @@ class MemoTabWidget extends StatelessWidget {
             ),
           ),
         ],
-
-        // Images (optional) — keeping since some subparts might need them
         if (step.solutionImages != null && step.solutionImages!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -423,7 +465,7 @@ class MemoTabWidget extends StatelessWidget {
         button(
           icon: Icons.close,
           active: status == 'INCORRECT',
-          activeColor: theme.colorScheme.error,
+          activeColor: Theme.of(context).colorScheme.error,
           onTap: () {
             final newStatus =
                 status == 'INCORRECT' ? 'NOT_ATTEMPTED' : 'INCORRECT';

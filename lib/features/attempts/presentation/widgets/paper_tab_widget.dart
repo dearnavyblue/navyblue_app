@@ -286,6 +286,8 @@ class PaperTabWidget extends StatelessWidget {
                               height: 200,
                               fit: BoxFit.contain,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: Colors.transparent, width: 0),
                               semanticsLabel:
                                   'Question ${question.questionNumber} image',
                             ),
