@@ -782,7 +782,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildSubjectCard(ThemeData theme, dynamic subjectProgress) {
-    final txt = Theme.of(context).extension<AppTextStyles>()!;
     final papers = subjectProgress.papers as Map<String, dynamic>;
 
     // Calculate overall readiness from all papers
@@ -793,13 +792,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       paperCount++;
     }
     final overallReadiness = paperCount > 0 ? totalScore / paperCount : 0.0;
-    final readinessLevel = _getReadinessLevelFromScore(overallReadiness);
+    final readinessLevel = _preparednessLevel(overallReadiness);
+    final readinessColor = _preparednessColor(overallReadiness, theme);
+    final readinessDescription = _subjectPreparednessDescription(overallReadiness);
 
     // Get selected paper data
     final selectedPaperProgress = papers[_selectedPaper];
     if (selectedPaperProgress == null) return const SizedBox.shrink();
 
     final topics = selectedPaperProgress.topics as Map<String, dynamic>;
+    final topicEntries = topics.entries.toList();
 
     return Card(
       margin: EdgeInsets.zero,
@@ -827,19 +829,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _statusColor(context, readinessLevel),
-                    borderRadius: BorderRadius.circular(12),
+                    color: readinessColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     readinessLevel,
-                    style: txt.extraSmall.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: readinessColor,
+                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -852,71 +852,105 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: overallReadiness / 100,
-                minHeight: 5,
+                minHeight: 6,
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation(
-                  overallReadiness > 0
-                      ? _statusColor(context, readinessLevel)
-                      : theme.colorScheme.outline,
+                  overallReadiness > 0 ? readinessColor : theme.colorScheme.outline,
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              readinessDescription,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                fontWeight: FontWeight.w400,
+                fontSize: 10,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
 
             // Papers Section - Show all papers with click functionality
-            Row(
-              children: papers.entries.map((entry) {
-                final paperType = entry.key;
-                final paperProgress = entry.value;
-                final isSelected = _selectedPaper == paperType;
-                final paperName = paperType
-                    .split('_')
-                    .map((word) =>
-                        word[0].toUpperCase() + word.substring(1).toLowerCase())
-                    .join(' ');
-
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                        right: entry.key != papers.keys.last ? 12 : 0),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedPaper = paperType;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? theme.colorScheme.primaryContainer
-                                  .withValues(alpha: 0.3)
-                              : null,
-                          borderRadius: BorderRadius.circular(8),
-                          border: isSelected
-                              ? Border.all(
-                                  color: theme.colorScheme.primary,
-                                  width: 2,
-                                )
-                              : null,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: papers.entries
+                    .map((entry) {
+                      final paperType = entry.key;
+                      final paperProgress = entry.value;
+                      final isSelected = _selectedPaper == paperType;
+                      final paperName = paperType
+                          .split('_')
+                          .map((word) =>
+                              word[0].toUpperCase() + word.substring(1).toLowerCase())
+                          .join(' ');
+                      final tile = Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: entry.key != papers.keys.last ? 12 : 0,
+                          ),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedPaper = paperType;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? theme.colorScheme.primaryContainer
+                                        .withValues(alpha: 0.3)
+                                    : null,
+                                borderRadius: BorderRadius.circular(8),
+                                border: isSelected
+                                    ? Border.all(
+                                        color: theme.colorScheme.primary,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: _buildPaperProgress(
+                                theme,
+                                paperName,
+                                paperProgress.averageScore ?? 0.0,
+                              ),
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.all(8),
-                        child: _buildPaperProgress(
-                          theme,
-                          paperName,
-                          paperProgress.averageScore ?? 0.0,
+                      );
+                      if (entry.key == papers.keys.last) {
+                        return [tile];
+                      }
+                      return [
+                        tile,
+                        VerticalDivider(
+                          width: 12,
+                          thickness: 1,
+                          color:
+                              theme.colorScheme.outline.withValues(alpha: 0.15),
                         ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                      ];
+                    })
+                    .expand((widgets) => widgets)
+                    .toList(),
+              ),
             ),
             const SizedBox(height: 16),
+            Divider(
+              height: 24,
+              thickness: 1,
+              color: theme.colorScheme.outline.withValues(alpha: 0.15),
+            ),
 
             // Topics Breakdown for selected paper
-            if (topics.isNotEmpty) ...[
-              ...topics.entries.map((entry) {
+            if (topicEntries.isNotEmpty)
+              ...List.generate(topicEntries.length, (index) {
+                final entry = topicEntries[index];
+                final isLastTopic = index == topicEntries.length - 1;
                 final topicName = entry.key;
                 final topicProgress = entry.value;
                 final topicAccuracy = topicProgress.performance ?? 0.0;
@@ -925,53 +959,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     .map((word) =>
                         word[0].toUpperCase() + word.substring(1).toLowerCase())
                     .join(' ');
+                final prepLevel = _preparednessLevel(topicAccuracy);
+                final prepDescription = _topicPreparednessDescription(topicAccuracy);
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Topic name with % Ready
-                      Row(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            topicDisplayName,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurfaceVariant,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 2,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      topicDisplayName,
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      softWrap: true,
+                                    ),
+                                    Text(
+                                      '${topicAccuracy.toInt()}%',
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: _preparednessColor(topicAccuracy, theme),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _preparednessColor(topicAccuracy, theme)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  prepLevel,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: _preparednessColor(topicAccuracy, theme),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: topicAccuracy / 100,
+                              minHeight: 6,
+                              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.6),
+                              valueColor: AlwaysStoppedAnimation(
+                                _preparednessColor(topicAccuracy, theme),
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(height: 8),
                           Text(
-                            '${topicAccuracy.toInt()}%',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                            prepDescription,
+                            softWrap: true,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.65),
+                              fontWeight: FontWeight.w400,
+                              fontSize: 10,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: topicAccuracy / 100,
-                          minHeight: 5,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation(
-                            topicAccuracy > 0
-                                ? _statusColor(context,
-                                    _getReadinessLevelFromScore(topicAccuracy))
-                                : theme.colorScheme.outline,
-                          ),
-                        ),
+                    ),
+                    if (!isLastTopic)
+                      Divider(
+                        height: 20,
+                        thickness: 1,
+                        color: theme.colorScheme.outline.withValues(alpha: 0.15),
                       ),
-                    ],
-                  ),
+                  ],
                 );
               }),
-            ],
           ],
         ),
       ),
@@ -1210,6 +1292,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
+  String _preparednessLevel(double percent) {
+    if (percent >= 80) return 'Fully prepared';
+    if (percent >= 70) return 'Well prepared';
+    if (percent >= 60) return 'Prepared with gaps';
+    if (percent >= 50) return 'Barely prepared';
+    if (percent >= 40) return 'Underprepared';
+    return 'Not prepared';
+  }
+
+  String _subjectPreparednessDescription(double percent) {
+    if (percent >= 80) {
+      return "Ready for exams. Do timed practice papers.";
+    } else if (percent >= 70) {
+      return "Good work. Focus on weak topics listed above.";
+    } else if (percent >= 60) {
+      return "You'll pass. Work on weak areas for a better mark.";
+    } else if (percent >= 50) {
+      return "You're at risk. Make a revision plan now.";
+    } else if (percent >= 40) {
+      return "You'll probably fail. See your teacher urgently.";
+    } else {
+      return "You're failing. You need help immediately.";
+    }
+  }
+
+  String _topicPreparednessDescription(double percent) {
+    if (percent >= 80) {
+      return "You know this topic well. Practice exam questions.";
+    } else if (percent >= 70) {
+      return "You know most of it. Work on weak spots.";
+    } else if (percent >= 60) {
+      return "You get the basics but make mistakes. Practice more.";
+    } else if (percent >= 50) {
+      return "You're struggling with key ideas. Redo examples.";
+    } else if (percent >= 40) {
+      return "You're missing basics. Get help from your teacher.";
+    } else {
+      return "You can't answer basic questions. See your teacher now.";
+    }
+  }
+
+  Color _preparednessColor(double percent, ThemeData theme) {
+    if (percent >= 80) return const Color(0xFF16A34A);
+    if (percent >= 70) return const Color(0xFF65A30D);
+    if (percent >= 60) return const Color(0xFFF59E0B);
+    if (percent >= 50) return const Color(0xFFF97316);
+    if (percent >= 40) return const Color(0xFFDC2626);
+    return const Color(0xFF991B1B);
+  }
+
   Color _statusColor(BuildContext context, String level) {
     final status = Theme.of(context).extension<StatusColors>()!;
     switch (level.toLowerCase()) {
