@@ -12,6 +12,8 @@ import 'package:navyblue_app/features/greeting/presentation/greeting_patterns_co
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
+import 'package:navyblue_app/features/attempts/presentation/widgets/user_attempts_filters.dart';
+import 'package:navyblue_app/features/attempts/presentation/widgets/user_attempt_card.dart';
 import 'package:navyblue_app/brick/repository.dart';
 import 'dart:async';
 
@@ -29,6 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _hasLoadedOnce = false;
   String? _selectedSubject;
   String? _selectedPaper;
+  Map<String, String> _completedAttemptFilters = {};
   int _lastAttemptCount = 0;
   DateTime? _lastRefreshTime;
   Timer? _debounceTimer;
@@ -41,6 +44,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
     });
+  }
+
+  List<StudentAttempt> _getFilteredCompletedAttempts(HomeState state) {
+    var attempts = List<StudentAttempt>.from(state.completedAttempts)
+      ..removeWhere((attempt) => attempt.completedAt == null)
+      ..sort((a, b) {
+        final aDate = a.completedAt ?? a.startedAt;
+        final bDate = b.completedAt ?? b.startedAt;
+        return bDate.compareTo(aDate);
+      });
+
+    final typeFilter = _completedAttemptFilters['type'];
+    if (typeFilter != null && typeFilter != 'All') {
+      attempts = attempts.where((attempt) {
+        if (typeFilter == 'Practice') return attempt.mode == 'PRACTICE';
+        if (typeFilter == 'Exam') return attempt.mode == 'EXAM';
+        return true;
+      }).toList();
+    }
+
+    final scoreFilter = _completedAttemptFilters['score'];
+    if (scoreFilter != null && scoreFilter != 'All') {
+      attempts = attempts.where((attempt) {
+        final score = attempt.percentageScore;
+        if (score == null) return scoreFilter == 'Unscored';
+        switch (scoreFilter) {
+          case 'Excellent (80%+)':
+            return score >= 80;
+          case 'Good (60-79%)':
+            return score >= 60 && score < 80;
+          case 'Needs Work (<60%)':
+            return score < 60;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    final periodFilter = _completedAttemptFilters['period'];
+    if (periodFilter != null && periodFilter != 'All Time') {
+      final now = DateTime.now();
+      attempts = attempts.where((attempt) {
+        final reference = attempt.completedAt ?? attempt.startedAt;
+        switch (periodFilter) {
+          case 'Today':
+            return reference.year == now.year &&
+                reference.month == now.month &&
+                reference.day == now.day;
+          case 'This Week':
+            final weekStart = now.subtract(Duration(days: now.weekday - 1));
+            return reference.isAfter(weekStart);
+          case 'This Month':
+            return reference.year == now.year && reference.month == now.month;
+          case 'Last 3 Months':
+            final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+            return reference.isAfter(threeMonthsAgo);
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    return attempts;
   }
 
   @override
@@ -246,27 +312,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'In Progress',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Continue where you left off',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ],
+              Text(
+                'Continue',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  height: 1.4,
+                  letterSpacing: -0.02,
+                  color: Colors.black,
+                ),
               ),
               if (state.hasActiveAttempts)
                 TextButton(
-                  onPressed: () => context.push('/user-attempts'),
+                  onPressed: () => context.push('/user-attempts/in-progress'),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
@@ -635,24 +694,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final selectedProgress =
         _selectedSubject != null ? subjects[_selectedSubject] : null;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Title
-          Text(
+          const Text(
             'Exam Readiness',
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: TextStyle(
+              fontFamily: 'Inter',
               fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
+              fontSize: 16,
+              height: 1.4,
+              letterSpacing: -0.02,
+              color: Color(0xFF000000),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
+          const SizedBox(height: 4),
+          const Text(
             'See how ready you are for the exams',
-            style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              height: 1.4,
+              letterSpacing: -0.02,
+              color: Color(0xFF9C9C9C),
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -953,113 +1021,117 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildActivitySection(
       BuildContext context, ThemeData theme, HomeState state) {
+    final filteredAttempts = _getFilteredCompletedAttempts(state);
+    final attemptsToShow = filteredAttempts.take(4).toList();
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Recent Activity',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Attempts',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        height: 1.4,
+                        letterSpacing: -0.02,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Your previous attempts',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        height: 1.4,
+                        letterSpacing: -0.02,
+                        color: Color(0xFF9C9C9C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (filteredAttempts.isNotEmpty)
+                TextButton(
+                  onPressed: () => context.push('/user-attempts'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          UserAttemptsFilters(
+            activeFilters: _completedAttemptFilters,
+            includeStatus: false,
+            compact: true,
+            onFiltersChanged: (filters) {
+              setState(() => _completedAttemptFilters = filters);
+            },
           ),
           const SizedBox(height: 12),
-          if (state.hasActiveAttempts) ...[
-            Text(
-              'Active Attempts',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+          if (attemptsToShow.isEmpty)
+            _buildNoAttemptsCard(context, theme)
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: attemptsToShow.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final attempt = attemptsToShow[index];
+                return UserAttemptCard(
+                  attempt: attempt,
+                  paper: null,
+                  showModeBadge: true,
+                  onTap: () async {
+                    await context.push(
+                      '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}',
+                    );
+                    if (mounted) {
+                      _loadDashboardData();
+                    }
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            ...state.activeAttempts.take(3).map((attempt) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildActiveAttemptCard(context, theme, attempt),
-              );
-            }),
-            if (state.activeAttempts.length > 3)
-              TextButton(
-                onPressed: () => context.push('/user-attempts'),
-                child: Text('View all ${state.activeAttempts.length} attempts'),
-              ),
-          ] else ...[
-            _buildNoActivityCard(context, theme),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildActiveAttemptCard(
-      BuildContext context, ThemeData theme, StudentAttempt attempt) {
-    final isExam = attempt.mode == 'EXAM';
-    final timeElapsed = DateTime.now().difference(attempt.startedAt);
-    final scheme = theme.colorScheme;
-    final container =
-        isExam ? scheme.tertiaryContainer : scheme.secondaryContainer;
-    final onContainer =
-        isExam ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
-
-    return Card(
-      child: InkWell(
-        onTap: () => context.push('/user-attempts'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: container,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  isExam ? Icons.timer : Icons.psychology,
-                  size: 20,
-                  color: onContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${isExam ? 'Exam' : 'Practice'} in Progress',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Started ${_formatDuration(timeElapsed)} ago',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoActivityCard(BuildContext context, ThemeData theme) {
+  Widget _buildNoAttemptsCard(BuildContext context, ThemeData theme) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1072,14 +1144,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'No recent activity',
+              'No completed attempts yet',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Start practicing to see your progress here',
+              'Complete a paper to unlock your stats here.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1153,14 +1225,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Theme.of(context).colorScheme.primary;
     }
   }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d';
-    if (duration.inHours > 0) return '${duration.inHours}h';
-    if (duration.inMinutes > 0) return '${duration.inMinutes}m';
-    return 'now';
-  }
-
   String _getReadinessLevelFromScore(double score) {
     if (score >= 80) return 'Excellent';
     if (score >= 65) return 'Good';

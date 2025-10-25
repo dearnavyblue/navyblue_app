@@ -25,11 +25,11 @@ class GreetingBar extends StatelessWidget {
     final theme = Theme.of(context);
     final msg = pickGreeting(displayName);
 
-    final leftColor = theme.colorScheme.onSecondary; // base stays light
+    final backgroundColor = theme.colorScheme.surface;
     final baseRight = colorForEmoji(msg.emoji, theme.colorScheme);
     final rightColor =
         _mix(baseRight, brandTint ?? baseRight, brandTint == null ? 0 : 0.25);
-    final textColor = _bestOn(leftColor);
+    final textColor = theme.colorScheme.onSurface;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -40,7 +40,7 @@ class GreetingBar extends StatelessWidget {
           child: Stack(
             children: [
               // 1) Base: light surface across entire card
-              Positioned.fill(child: ColoredBox(color: leftColor)),
+              Positioned.fill(child: ColoredBox(color: backgroundColor)),
 
               // 2) TOP slab: color -> white (fade) top→bottom, confined to <30% height
               Positioned(
@@ -53,11 +53,11 @@ class GreetingBar extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
-                        colors: [
+                      colors: [
                         rightColor, // strong at top-right
-                        Color.lerp(rightColor, leftColor, 0.55)!, // soften
-                        leftColor.withValues(alpha: 0.0), // hard stop to transparent
-                        leftColor.withValues(alpha: 0.0), // keep rest fully clear
+                        Color.lerp(rightColor, backgroundColor, 0.55)!, // soften
+                        backgroundColor.withValues(alpha: 0.0), // hard stop to transparent
+                        backgroundColor.withValues(alpha: 0.0), // keep rest fully clear
                       ],
                       stops: const [0.0, 0.18, 0.30, 1.0],
                       transform: const GradientRotation(-0.785398)
@@ -85,6 +85,12 @@ class GreetingBar extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    _EmojiPill(
+                      emoji: msg.emoji,
+                      bg: rightColor,
+                      fg: _bestOn(rightColor),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         mainAxisSize: MainAxisSize.min, // prevents overflow
@@ -102,7 +108,7 @@ class GreetingBar extends StatelessWidget {
                           Text(
                             msg.l2 ?? 'Welcome back',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: textColor.withValues(alpha: 0.75),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -110,11 +116,6 @@ class GreetingBar extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _EmojiPill(
-                        emoji: msg.emoji,
-                        bg: rightColor,
-                        fg: _bestOn(rightColor)),
                   ],
                 ),
               ),

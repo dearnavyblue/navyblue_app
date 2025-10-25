@@ -12,12 +12,14 @@ class UserAttemptCard extends StatelessWidget {
   final StudentAttempt attempt;
   final ExamPaper? paper;
   final VoidCallback? onTap;
+  final bool showModeBadge;
 
   const UserAttemptCard({
     super.key,
     required this.attempt,
     this.paper,
     this.onTap,
+    this.showModeBadge = false,
   });
 
   // Get progress from server-calculated data or fallback to stored values
@@ -55,7 +57,7 @@ class UserAttemptCard extends StatelessWidget {
       final status = Theme.of(context).extension<StatusColors>()!;
       final progress = _getProgress();
 
-      return Card(
+      final card = Card(
         elevation: 2,
         margin: EdgeInsets.zero,
         color: scheme.surface,
@@ -190,20 +192,64 @@ class UserAttemptCard extends StatelessWidget {
                   ],
                 ),
 
-                // View Results button - ONLY difference for completed attempts
-                if (isCompleted) ...[
-                  const SizedBox(height: 12),
-                  Pill(
-                    label: 'View Results',
-                    variant: PillVariant.subtle,
-                    leading: const Icon(Icons.visibility_outlined, size: 17.35),
-                    onTap: onTap ?? () => _resumeAttempt(context),
-                  ),
-                ],
-              ],
+        // View Results button - ONLY difference for completed attempts
+        if (isCompleted) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Pill(
+                  label: 'View Results',
+                  variant: PillVariant.subtle,
+                  leading: const Icon(Icons.visibility_outlined, size: 17.35),
+                  onTap: onTap ?? () => _resumeAttempt(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  ),
+        ),
+      );
+
+      if (!showModeBadge) {
+        return card;
+      }
+
+      final modeLabel = attempt.mode == 'EXAM' ? 'Exam' : 'Practice';
+      final badgeColor = attempt.mode == 'EXAM'
+          ? theme.colorScheme.primary
+          : theme.colorScheme.secondary;
+
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                modeLabel,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: Colors.white,
+                  height: 1.2,
+                  letterSpacing: -0.01,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       );
     } catch (e) {
       // Return error card

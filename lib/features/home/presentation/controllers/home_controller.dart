@@ -16,6 +16,7 @@ import '../../../../brick/repository.dart';
 class HomeState {
   final ProgressSummary? progressSummary;
   final List<StudentAttempt> activeAttempts;
+  final List<StudentAttempt> completedAttempts;
   final bool isLoadingProgress;
   final bool isLoadingAttempts;
   final String? error;
@@ -24,6 +25,7 @@ class HomeState {
   const HomeState({
     this.progressSummary,
     this.activeAttempts = const [],
+    this.completedAttempts = const [],
     this.isLoadingProgress = false,
     this.isLoadingAttempts = false,
     this.error,
@@ -33,6 +35,7 @@ class HomeState {
   HomeState copyWith({
     ProgressSummary? progressSummary,
     List<StudentAttempt>? activeAttempts,
+    List<StudentAttempt>? completedAttempts,
     bool? isLoadingProgress,
     bool? isLoadingAttempts,
     String? error,
@@ -41,6 +44,7 @@ class HomeState {
     return HomeState(
       progressSummary: progressSummary ?? this.progressSummary,
       activeAttempts: activeAttempts ?? this.activeAttempts,
+      completedAttempts: completedAttempts ?? this.completedAttempts,
       isLoadingProgress: isLoadingProgress ?? this.isLoadingProgress,
       isLoadingAttempts: isLoadingAttempts ?? this.isLoadingAttempts,
       error: error,
@@ -50,6 +54,7 @@ class HomeState {
 
   bool get hasData => progressSummary?.hasData ?? false;
   bool get hasActiveAttempts => activeAttempts.isNotEmpty;
+  bool get hasCompletedAttempts => completedAttempts.isNotEmpty;
   bool get isLoading => isLoadingProgress || isLoadingAttempts;
 }
 
@@ -119,6 +124,9 @@ class HomeController extends StateNotifier<HomeState> {
       final activeLocalAttempts = localAttempts
           .where((attempt) => attempt.completedAt == null)
           .toList();
+      final completedLocalAttempts = localAttempts
+          .where((attempt) => attempt.completedAt != null)
+          .toList();
 
       // OPTIMIZATION: Calculate progress efficiently
       final localProgress = _calculateLocalProgress(
@@ -132,6 +140,7 @@ class HomeController extends StateNotifier<HomeState> {
 
       state = state.copyWith(
         activeAttempts: activeLocalAttempts,
+        completedAttempts: completedLocalAttempts,
         progressSummary: localProgress,
         isLoadingProgress: false,
         isLoadingAttempts: false,

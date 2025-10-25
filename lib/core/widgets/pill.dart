@@ -156,6 +156,10 @@ class PillDropdown<T> extends StatelessWidget {
     this.variant = PillVariant.outline,
     this.includeAllOption = true,
     this.leading,
+    this.padding,
+    this.minHeight,
+    this.iconSize,
+    this.maxLabelWidth,
   });
 
   final List<T> items;
@@ -166,6 +170,10 @@ class PillDropdown<T> extends StatelessWidget {
   final PillVariant variant;
   final bool includeAllOption;
   final Widget? leading;
+  final EdgeInsetsGeometry? padding;
+  final double? minHeight;
+  final double? iconSize;
+  final double? maxLabelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -183,10 +191,15 @@ class PillDropdown<T> extends StatelessWidget {
     );
 
     final entries = includeAllOption ? [null, ...items] : [...items];
+    final resolvedPadding =
+        padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 6);
+    final resolvedMinHeight = minHeight ?? 32;
+    final resolvedIconSize = iconSize ?? 18;
+    final resolvedMaxLabelWidth = maxLabelWidth ?? 200;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 32),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      constraints: BoxConstraints(minHeight: resolvedMinHeight),
+      padding: resolvedPadding,
       decoration: BoxDecoration(
         color: colors.backgroundColor,
         borderRadius: BorderRadius.circular(20),
@@ -197,16 +210,28 @@ class PillDropdown<T> extends StatelessWidget {
           value: value,
           isDense: true,
           isExpanded: false,
-          icon: Icon(Icons.expand_more,
-              size: 18, color: colors.iconColor ?? colors.textColor),
+          icon: Icon(
+            Icons.expand_more,
+            size: resolvedIconSize,
+            color: colors.iconColor ?? colors.textColor,
+          ),
           dropdownColor: Colors.white,
           style: textStyle,
           hint: _buildLabel(
-              textStyle, value == null ? hint : labelBuilder(value as T)),
+            textStyle,
+            value == null ? hint : labelBuilder(value as T),
+            resolvedIconSize,
+            resolvedMaxLabelWidth,
+          ),
           selectedItemBuilder: (context) {
             return entries.map((entry) {
               final text = entry == null ? hint : labelBuilder(entry);
-              return _buildLabel(textStyle, text);
+              return _buildLabel(
+                textStyle,
+                text,
+                resolvedIconSize,
+                resolvedMaxLabelWidth,
+              );
             }).toList();
           },
           items: entries.map((entry) {
@@ -216,6 +241,8 @@ class PillDropdown<T> extends StatelessWidget {
               child: _buildLabel(
                 textStyle.copyWith(color: Colors.black),
                 display,
+                resolvedIconSize,
+                resolvedMaxLabelWidth,
               ),
             );
           }).toList(),
@@ -225,16 +252,21 @@ class PillDropdown<T> extends StatelessWidget {
     );
   }
 
-  Widget _buildLabel(TextStyle textStyle, String text) {
+  Widget _buildLabel(
+    TextStyle textStyle,
+    String text,
+    double iconSize,
+    double maxWidth,
+  ) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 200),
+      constraints: BoxConstraints(maxWidth: maxWidth),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (leading != null) ...[
             IconTheme(
-              data: IconThemeData(size: 16, color: textStyle.color),
+              data: IconThemeData(size: iconSize, color: textStyle.color),
               child: leading!,
             ),
             const SizedBox(width: 8),
