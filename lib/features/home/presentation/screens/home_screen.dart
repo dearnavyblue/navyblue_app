@@ -102,7 +102,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
 
     // Set default selected subject if none is selected
-    if (_selectedSubject == null && state.progressSummary != null) {
+    if (_selectedSubject == null &&
+        state.progressSummary != null &&
+        state.progressSummary!.subjects.isNotEmpty) {
       _selectedSubject = state.progressSummary!.subjects.keys.first;
 
       // Set default selected paper (first paper of the selected subject)

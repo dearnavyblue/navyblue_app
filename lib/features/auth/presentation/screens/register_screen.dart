@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../domain/validators/auth_validators.dart';
 import '../controllers/auth_controller.dart';
 import '../providers/auth_presentation_providers.dart';
@@ -31,6 +31,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _selectedProvince;
   String? _selectedSyllabus;
 
+  static const _brandBlue = Color(0xFF1C34C5);
+  static const _accentBlue = Color(0xFF3B4FF9);
+  static const _borderColor = Color(0xFFE0E0E0);
+  static const _iconColor = Color(0xFF6B7280);
+
+  double _w(BuildContext context) => MediaQuery.of(context).size.width;
+  double _h(BuildContext context) => MediaQuery.of(context).size.height;
+  double _clamp(double value, double min, double max) =>
+      value < min ? min : (value > max ? max : value);
+
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -40,6 +50,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _confirmPasswordController.dispose();
     _schoolNameController.dispose();
     super.dispose();
+  }
+
+  InputDecoration _buildInputDecoration(
+    BuildContext context,
+    String hintText, {
+    Widget? suffixIcon,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      prefixIcon:
+          prefixIcon == null ? null : Icon(prefixIcon, color: _iconColor),
+      prefixIconConstraints: const BoxConstraints(minWidth: 48),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _brandBlue, width: 1.4),
+      ),
+      suffixIcon: suffixIcon,
+    );
   }
 
   String? _validateConfirmPassword(String? value) {
@@ -71,8 +111,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       if (!mounted) return;
@@ -94,389 +133,412 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     });
 
+    final maxFormWidth = _clamp(_w(context) * 0.92, 320, 420);
+    final headerHeight = _clamp(_h(context) * 0.2, 140, 180);
+    const horizontalInset = 16.0;
+    const headerHorizontalInset = 0.0;
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: Center(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 400;
-              final horizontalPadding = isMobile ? 16.0 : 24.0;
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding, vertical: 24),
+      backgroundColor: Colors.white,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _brandBlue,
+              _accentBlue,
+              Colors.white,
+            ],
+            stops: [0.0, 0.38, 0.68],
+          ),
+        ),
+        child: SafeArea(
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
+                  constraints: BoxConstraints(maxWidth: maxFormWidth),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // App Name & Description
-                      Text(
-                        AppConfig.appName,
-                        style: theme.textTheme.displayMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Create your NavyBlue account',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Form Card
-                      Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      SizedBox(
+                        height: headerHeight,
                         child: Padding(
-                          padding: EdgeInsets.all(isMobile ? 16 : 24),
-                          child: Form(
-                            key: _formKey,
-                            autovalidateMode: _autoValidate
-                                ? AutovalidateMode.onUserInteraction
-                                : AutovalidateMode.disabled,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Names
-                                isMobile
-                                    ? Column(
-                                        children: [
-                                          TextFormField(
-                                            controller: _firstNameController,
-                                            textInputAction:
-                                                TextInputAction.next,
-                                            enabled: !authState.isLoading,
-                                            decoration: InputDecoration(
-                                              labelText: 'First Name',
-                                              prefixIcon: Icon(
-                                                  Icons.person_outlined,
-                                                  color: colorScheme.onSurface
-                                                      .withOpacity(0.6)),
-                                              border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8)),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16,
-                                                      horizontal: 12),
-                                            ),
-                                            validator: (value) =>
-                                                AuthValidators.name(
-                                                    value, 'First name'),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          TextFormField(
-                                            controller: _lastNameController,
-                                            textInputAction:
-                                                TextInputAction.next,
-                                            enabled: !authState.isLoading,
-                                            decoration: InputDecoration(
-                                              labelText: 'Last Name',
-                                              prefixIcon: Icon(
-                                                  Icons.person_outlined,
-                                                  color: colorScheme.onSurface
-                                                      .withOpacity(0.6)),
-                                              border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8)),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16,
-                                                      horizontal: 12),
-                                            ),
-                                            validator: (value) =>
-                                                AuthValidators.name(
-                                                    value, 'Last name'),
-                                          ),
-                                        ],
-                                      )
-                                    : Row(
-                                        children: [
-                                          Expanded(
-                                            child: TextFormField(
-                                              controller: _firstNameController,
-                                              textInputAction:
-                                                  TextInputAction.next,
-                                              enabled: !authState.isLoading,
-                                              decoration: InputDecoration(
-                                                labelText: 'First Name',
-                                                prefixIcon: Icon(
-                                                    Icons.person_outlined,
-                                                    color: colorScheme.onSurface
-                                                        .withOpacity(0.6)),
-                                                border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8)),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 16,
-                                                        horizontal: 12),
-                                              ),
-                                              validator: (value) =>
-                                                  AuthValidators.name(
-                                                      value, 'First name'),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: TextFormField(
-                                              controller: _lastNameController,
-                                              textInputAction:
-                                                  TextInputAction.next,
-                                              enabled: !authState.isLoading,
-                                              decoration: InputDecoration(
-                                                labelText: 'Last Name',
-                                                prefixIcon: Icon(
-                                                    Icons.person_outlined,
-                                                    color: colorScheme.onSurface
-                                                        .withOpacity(0.6)),
-                                                border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8)),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 16,
-                                                        horizontal: 12),
-                                              ),
-                                              validator: (value) =>
-                                                  AuthValidators.name(
-                                                      value, 'Last name'),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                const SizedBox(height: 16),
-
-                                // Email
-                                TextFormField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !authState.isLoading,
-                                  decoration: InputDecoration(
-                                    labelText: 'Email Address',
-                                    prefixIcon: Icon(Icons.email_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 16, horizontal: 12),
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/whole_logo.png',
+                                    height: 28,
+                                    fit: BoxFit.contain,
                                   ),
-                                  validator: AuthValidators.email,
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Password
-                                TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !authState.isLoading,
-                                  decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    prefixIcon: Icon(Icons.lock_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    suffixIcon: IconButton(
-                                      onPressed: () => setState(() =>
-                                          _obscurePassword = !_obscurePassword),
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6),
-                                      ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Navy Blue',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                          letterSpacing: 0.2,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Enter your credentials to create an account',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 16, horizontal: 12),
-                                  ),
-                                  validator: AuthValidators.password,
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Confirm Password
-                                TextFormField(
-                                  controller: _confirmPasswordController,
-                                  obscureText: _obscureConfirmPassword,
-                                  textInputAction: TextInputAction.next,
-                                  enabled: !authState.isLoading,
-                                  decoration: InputDecoration(
-                                    labelText: 'Confirm Password',
-                                    prefixIcon: Icon(Icons.lock_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    suffixIcon: IconButton(
-                                      onPressed: () => setState(() =>
-                                          _obscureConfirmPassword =
-                                              !_obscureConfirmPassword),
-                                      icon: Icon(
-                                        _obscureConfirmPassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6),
-                                      ),
-                                    ),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 16, horizontal: 12),
-                                  ),
-                                  validator: _validateConfirmPassword,
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Academic Dropdowns
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedGrade,
-                                  decoration: InputDecoration(
-                                    labelText: 'Grade',
-                                    prefixIcon: Icon(Icons.school_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 12, horizontal: 12),
-                                  ),
-                                  validator: AuthValidators.grade,
-                                  items: AppConfig.supportedGrades
-                                      .map((g) => DropdownMenuItem(
-                                          value: g,
-                                          child: Text(
-                                              AppConfig.getGradeDisplayName(
-                                                  g))))
-                                      .toList(),
-                                  onChanged: authState.isLoading
-                                      ? null
-                                      : (v) =>
-                                          setState(() => _selectedGrade = v),
-                                ),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedSyllabus,
-                                  decoration: InputDecoration(
-                                    labelText: 'Syllabus',
-                                    prefixIcon: Icon(Icons.menu_book_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 12, horizontal: 12),
-                                  ),
-                                  validator: AuthValidators.syllabus,
-                                  items: AppConfig.supportedSyllabi
-                                      .map((s) => DropdownMenuItem(
-                                          value: s,
-                                          child: Text(
-                                              AppConfig.getSyllabusDisplayName(
-                                                  s))))
-                                      .toList(),
-                                  onChanged: authState.isLoading
-                                      ? null
-                                      : (v) =>
-                                          setState(() => _selectedSyllabus = v),
-                                ),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedProvince,
-                                  decoration: InputDecoration(
-                                    labelText: 'Province',
-                                    prefixIcon: Icon(Icons.location_on_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 12, horizontal: 12),
-                                  ),
-                                  validator: AuthValidators.province,
-                                  items: AppConfig.southAfricanProvinces
-                                      .map((p) => DropdownMenuItem(
-                                          value: p,
-                                          child: Text(
-                                              AppConfig.getProvinceDisplayName(
-                                                  p))))
-                                      .toList(),
-                                  onChanged: authState.isLoading
-                                      ? null
-                                      : (v) =>
-                                          setState(() => _selectedProvince = v),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // School Name
-                                TextFormField(
-                                  controller: _schoolNameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'School Name (Optional)',
-                                    prefixIcon: Icon(Icons.business_outlined,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6)),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 16, horizontal: 12),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Register Button
-                                FilledButton(
-                                  onPressed: authState.isLoading
-                                      ? null
-                                      : _handleRegister,
-                                  child: authState.isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation(
-                                                Colors.white),
-                                          ),
-                                        )
-                                      : const Text('Create Account'),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 24),
-                      // Sign In Link
+                      const SizedBox(height: 16),
+                      Form(
+                        key: _formKey,
+                        autovalidateMode: _autoValidate
+                            ? AutovalidateMode.onUserInteraction
+                            : AutovalidateMode.disabled,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _firstNameController,
+                              textInputAction: TextInputAction.next,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'First Name',
+                                prefixIcon: Icons.person_outline,
+                              ),
+                              validator: (value) =>
+                                  AuthValidators.name(value, 'First name'),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _lastNameController,
+                              textInputAction: TextInputAction.next,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'Last Name',
+                                prefixIcon: Icons.person_outline,
+                              ),
+                              validator: (value) =>
+                                  AuthValidators.name(value, 'Last name'),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'Email Address',
+                                prefixIcon: Icons.email_outlined,
+                              ),
+                              validator: AuthValidators.email,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _passwordController,
+                              textInputAction: TextInputAction.next,
+                              obscureText: _obscurePassword,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'Password',
+                                prefixIcon: Icons.lock_outline,
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    setState(() =>
+                                        _obscurePassword = !_obscurePassword);
+                                  },
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    color: _iconColor,
+                                  ),
+                                ),
+                              ),
+                              validator: AuthValidators.password,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              textInputAction: TextInputAction.next,
+                              obscureText: _obscureConfirmPassword,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'Confirm Password',
+                                prefixIcon: Icons.lock_outline,
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    setState(() => _obscureConfirmPassword =
+                                        !_obscureConfirmPassword);
+                                  },
+                                  icon: Icon(
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    color: _iconColor,
+                                  ),
+                                ),
+                              ),
+                              validator: _validateConfirmPassword,
+                            ),
+                            const SizedBox(height: 16),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final itemWidth = constraints.maxWidth;
+                                return DropdownButtonFormField<String>(
+                                  value: _selectedGrade,
+                                  isExpanded: true,
+                                  icon: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: _brandBlue,
+                                  ),
+                                  decoration: _buildInputDecoration(
+                                    context,
+                                    'Grade',
+                                    prefixIcon: Icons.school_outlined,
+                                  ),
+                                  validator: AuthValidators.grade,
+                                  items: AppConfig.supportedGrades
+                                      .map(
+                                        (grade) => DropdownMenuItem(
+                                          value: grade,
+                                          alignment:
+                                              AlignmentDirectional.centerStart,
+                                          child: SizedBox(
+                                            width: itemWidth,
+                                            child: Text(
+                                              AppConfig.getGradeDisplayName(
+                                                grade,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: authState.isLoading
+                                      ? null
+                                      : (value) => setState(
+                                          () => _selectedGrade = value),
+                                  dropdownColor: Colors.white,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final itemWidth = constraints.maxWidth;
+                                return DropdownButtonFormField<String>(
+                                  value: _selectedSyllabus,
+                                  isExpanded: true,
+                                  icon: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: _brandBlue,
+                                  ),
+                                  decoration: _buildInputDecoration(
+                                    context,
+                                    'Syllabus',
+                                    prefixIcon: Icons.menu_book_outlined,
+                                  ),
+                                  validator: AuthValidators.syllabus,
+                                  items: AppConfig.supportedSyllabi
+                                      .map(
+                                        (syllabus) => DropdownMenuItem(
+                                          value: syllabus,
+                                          alignment:
+                                              AlignmentDirectional.centerStart,
+                                          child: SizedBox(
+                                            width: itemWidth,
+                                            child: Text(
+                                              AppConfig.getSyllabusDisplayName(
+                                                syllabus,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: authState.isLoading
+                                      ? null
+                                      : (value) => setState(
+                                            () => _selectedSyllabus = value,
+                                          ),
+                                  dropdownColor: Colors.white,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final itemWidth = constraints.maxWidth;
+                                return DropdownButtonFormField<String>(
+                                  value: _selectedProvince,
+                                  isExpanded: true,
+                                  icon: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: _brandBlue,
+                                  ),
+                                  decoration: _buildInputDecoration(
+                                    context,
+                                    'Province',
+                                    prefixIcon: Icons.location_on_outlined,
+                                  ),
+                                  validator: AuthValidators.province,
+                                  items: AppConfig.southAfricanProvinces
+                                      .map(
+                                        (province) => DropdownMenuItem(
+                                          value: province,
+                                          alignment:
+                                              AlignmentDirectional.centerStart,
+                                          child: SizedBox(
+                                            width: itemWidth,
+                                            child: Text(
+                                              AppConfig.getProvinceDisplayName(
+                                                province,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: authState.isLoading
+                                      ? null
+                                      : (value) => setState(
+                                            () => _selectedProvince = value,
+                                          ),
+                                  dropdownColor: Colors.white,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _schoolNameController,
+                              textInputAction: TextInputAction.done,
+                              enabled: !authState.isLoading,
+                              decoration: _buildInputDecoration(
+                                context,
+                                'School Name (Optional)',
+                                prefixIcon: Icons.apartment_outlined,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              height: 40,
+                              child: FilledButton(
+                                onPressed: authState.isLoading
+                                    ? null
+                                    : _handleRegister,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _brandBlue,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: authState.isLoading
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text('Continue'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                          children: const [
+                            TextSpan(
+                              text: 'By clicking continue, you agree to our ',
+                            ),
+                            TextSpan(
+                              text: 'Terms of Service',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            TextSpan(text: ' and '),
+                            TextSpan(
+                              text: 'Privacy Policy',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            TextSpan(text: '.'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             'Already have an account? ',
-                            style:
-                                TextStyle(color: colorScheme.onSurfaceVariant),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.7),
+                                ),
                           ),
                           TextButton(
                             onPressed: authState.isLoading
                                 ? null
                                 : () => context.go(AppConstants.loginRoute),
-                            child: Text(
+                            style: TextButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 6),
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
                               'Sign In',
-                              style: TextStyle(color: colorScheme.primary),
+                              style: TextStyle(
+                                color: _brandBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -484,8 +546,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),

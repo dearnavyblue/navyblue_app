@@ -8,10 +8,12 @@ import 'package:flutter_tex/flutter_tex.dart';
 import 'core/theme/app_theme.dart';
 import 'core/config/app_config.dart';
 import 'core/startup/app_startup_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   // Only non-failable initialization here
   try {

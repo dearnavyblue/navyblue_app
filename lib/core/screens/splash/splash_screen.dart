@@ -5,125 +5,118 @@ import '../../config/app_config.dart';
 import '../../../features/auth/presentation/providers/auth_presentation_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({super.key, this.progressValue, this.progressText});
+
+  final double? progressValue;
+  final String? progressText;
 
   @override
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  static const _brandBlue = Color(0xFF1C34C5);
+
   @override
   void initState() {
     super.initState();
-    // Initialize the app after the widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeApp();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeApp());
   }
 
   Future<void> _initializeApp() async {
+    if (widget.progressValue != null) return;
+
     try {
-      print('Splash: Starting app initialization...');
-
-      // Initialize auth controller - this will trigger router redirects automatically
       await ref.read(authControllerProvider.notifier).initialize();
-
-      print('Splash: Auth initialization completed');
-
-      // Keep splash visible for minimum duration for UX
       await Future.delayed(const Duration(seconds: 2));
-
-      print('Splash: Minimum display time completed');
-
-      // Don't manually navigate - let the router handle it automatically
-      // The router's redirect function will handle navigation based on auth state
     } catch (e) {
-      print('Splash initialization error: $e');
-      if (mounted) {
-        // Show error but don't navigate manually
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to initialize app: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to initialize app: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: scheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App name
-            Text(
-              AppConfig.appName,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Description
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                AppConfig.appDescription,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: scheme.onSurface,
-                      height: 1.4,
+      backgroundColor: _brandBlue,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/whole_logo.png',
+                      height: 28,
+                      fit: BoxFit.contain,
                     ),
-                textAlign: TextAlign.center,
+                    const SizedBox(width: 12),
+                    Text(
+                      'Navy Blue',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-
-            const SizedBox(height: 64),
-
-            // Loading indicator
-            CircularProgressIndicator(
-              color: scheme.primary,
-              strokeWidth: 3,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Version
-            Text(
-              'Version ${AppConfig.appVersion}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withOpacity(0.6),
-                  ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Status indicator (optional - helps with debugging)
-            Consumer(
-              builder: (context, ref, child) {
-                final authState = ref.watch(authControllerProvider);
-                return Text(
-                  authState.isInitialized
-                      ? 'Initialization complete...'
-                      : 'Initializing...',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withOpacity(0.6),
-                      ),
-                );
-              },
-            ),
-          ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/dancing.webp',
+                  height: 120,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 24),
+              FractionallySizedBox(
+                widthFactor: 0.7,
+                child: LinearProgressIndicator(
+                  value: widget.progressValue,
+                  minHeight: 6,
+                  color: Colors.white,
+                  backgroundColor: Colors.white.withOpacity(0.25),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.progressText ?? _buildStatusText(context),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Version ${AppConfig.appVersion}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.white.withOpacity(0.7)),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _buildStatusText(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+    return authState.isInitialized
+        ? 'Initialization complete'
+        : 'Getting things ready...';
   }
 }

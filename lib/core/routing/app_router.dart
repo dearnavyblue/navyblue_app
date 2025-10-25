@@ -93,7 +93,7 @@ final authRouterNotifierProvider =
       print('Auth router state update error: $e');
       // Keep existing state on error
     }
-  });
+  }, fireImmediately: true);
 
   return notifier;
 });

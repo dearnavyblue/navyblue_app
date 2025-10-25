@@ -1,6 +1,5 @@
 // app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
 /// --- Custom Extensions ---
@@ -189,7 +188,7 @@ class ProvinceColors extends ThemeExtension<ProvinceColors> {
 class AppTextStyles extends ThemeExtension<AppTextStyles> {
   final TextStyle extraSmall;
   final TextStyle extraExtraSmall; // optional
-
+  
   const AppTextStyles({
     required this.extraSmall,
     required this.extraExtraSmall,
@@ -216,6 +215,7 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
     );
   }
 }
+
 /// --- Core Theme Builder ---
 
 class AppTheme {
@@ -299,13 +299,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.inter().fontFamily,
-      textTheme: GoogleFonts.interTextTheme(
-        Typography.material2021(platform: TargetPlatform.android).black.apply(
-          bodyColor: scheme.onSurface,
-          displayColor: scheme.onSurface,
-        ),
-      ),
+      fontFamily: 'Inter',
+      textTheme: _interTextTheme(scheme),
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -362,7 +357,7 @@ class AppTheme {
           info: Colors.blue.shade600,
           negative: Colors.red.shade600,
         ),
-         const ProvinceColors(
+        const ProvinceColors(
           gauteng: Color(0xFF64A2FC),
           kwazuluNatal: Color(0xFF95BBC4),
           northWest: Color(0xFFEC8C26),
@@ -390,4 +385,20 @@ class AppTheme {
       ],
     );
   }
+}
+
+TextTheme _interTextTheme(ColorScheme scheme) {
+  final baseTypography = Typography.material2021(
+    platform: TargetPlatform.android,
+  );
+
+  final base = scheme.brightness == Brightness.dark
+      ? baseTypography.white
+      : baseTypography.black;
+
+  return base.apply(
+    fontFamily: 'Inter',
+    bodyColor: scheme.onSurface,
+    displayColor: scheme.onSurface,
+  );
 }
