@@ -1,9 +1,9 @@
 // lib/core/startup/app_startup_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../config/app_config.dart';
 import 'app_startup_providers.dart';
 import 'main_app_router.dart';
+import '../screens/splash/splash_screen.dart';
 
 class AppStartupWidget extends ConsumerWidget {
   const AppStartupWidget({super.key});
@@ -13,7 +13,7 @@ class AppStartupWidget extends ConsumerWidget {
     final appStartupState = ref.watch(appStartupProvider);
     
     return appStartupState.when(
-      loading: () => const AppStartupLoadingWidget(),
+      loading: () => const AppStartupAnimatedSplash(),
       error: (error, stackTrace) => AppStartupErrorWidget(
         message: error.toString(),
         onRetry: () => ref.invalidate(appStartupProvider),
@@ -23,61 +23,44 @@ class AppStartupWidget extends ConsumerWidget {
   }
 }
 
-class AppStartupLoadingWidget extends StatelessWidget {
-  const AppStartupLoadingWidget({super.key});
+class AppStartupAnimatedSplash extends StatefulWidget {
+  const AppStartupAnimatedSplash({super.key});
+
+  @override
+  State<AppStartupAnimatedSplash> createState() => _AppStartupAnimatedSplashState();
+}
+
+class _AppStartupAnimatedSplashState extends State<AppStartupAnimatedSplash>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppConfig.appName,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                AppConfig.appDescription,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 64),
-            CircularProgressIndicator(
-              color: scheme.primary,
-              strokeWidth: 3,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Initializing app...',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Version ${AppConfig.appVersion}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return SplashScreen(
+          progressText: _controller.value < 0.5
+              ? 'Preparing resources...'
+              : 'Initializing app...',
+          progressValue: _controller.value,
+        );
+      },
     );
   }
 }
@@ -122,7 +105,7 @@ class AppStartupErrorWidget extends StatelessWidget {
               Text(
                 'Something went wrong during app initialization. Please try again or contact support if the problem persists.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface.withOpacity(0.8),
+                  color: scheme.onSurface.withValues(alpha: 0.8),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -132,7 +115,7 @@ class AppStartupErrorWidget extends StatelessWidget {
                   title: Text(
                     'Error Details',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withOpacity(0.7),
+                      color: scheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   children: [
@@ -141,7 +124,7 @@ class AppStartupErrorWidget extends StatelessWidget {
                       child: Text(
                         message,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurface.withOpacity(0.6),
+                          color: scheme.onSurface.withValues(alpha: 0.6),
                           fontFamily: 'monospace',
                         ),
                       ),

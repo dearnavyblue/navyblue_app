@@ -113,7 +113,6 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
         // Debounce refresh by 500ms
         _debounceTimer = Timer(const Duration(milliseconds: 500), () {
           if (mounted) {
-            print('REFRESHING PAPERS - Attempts changed or just loaded');
             ref.read(papersControllerProvider.notifier).onUserAttemptsChanged();
           }
         });
@@ -205,7 +204,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                         height: 16,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -215,7 +214,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                         height: 16,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -227,7 +226,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                     height: 20,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -237,7 +236,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                     height: 14,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -249,7 +248,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                         height: 12,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -259,7 +258,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                         height: 12,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -286,7 +285,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
@@ -313,7 +312,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                       ? 'Try adjusting your search or filters'
                       : 'Check back later for new exam papers'),
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
               textAlign: TextAlign.center,
@@ -381,7 +380,7 @@ class _PapersScreenState extends ConsumerState<PapersScreen> {
                   Text(
                     'Loading more papers...',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],

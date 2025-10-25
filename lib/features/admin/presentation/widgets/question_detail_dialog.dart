@@ -91,8 +91,8 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                     ),
                     decoration: BoxDecoration(
                       color: widget.question.isSimpleQuestion
-                          ? Colors.green.withOpacity(0.8)
-                          : Colors.blue.withOpacity(0.8),
+                          ? Colors.green.withValues(alpha: 0.8)
+                          : Colors.blue.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -143,7 +143,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
 
             // Tab Bar
             Container(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               child: TabBar(
                 controller: _tabController,
                 tabs: [
@@ -462,7 +462,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                     children: [
                       // Steps summary
                       Card(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -581,7 +581,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                       // Parts summary
                       Card(
                         color:
-                            theme.colorScheme.primaryContainer.withOpacity(0.3),
+                            theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -684,7 +684,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
         children: [
           // Solutions summary
           Card(
-            color: Colors.amber.withOpacity(0.1),
+            color: Colors.amber.withValues(alpha: 0.1),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -752,7 +752,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.8),
+                    color: Colors.green.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
@@ -877,9 +877,9 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,13 +1010,13 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
       decoration: BoxDecoration(
         border: Border.all(
           color: step.isCriticalStep
-              ? Colors.red.withOpacity(0.3)
-              : theme.colorScheme.outline.withOpacity(0.2),
+              ? Colors.red.withValues(alpha: 0.3)
+              : theme.colorScheme.outline.withValues(alpha: 0.2),
           width: step.isCriticalStep ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(12),
         color: step.isCriticalStep
-            ? Colors.red.withOpacity(0.05)
+            ? Colors.red.withValues(alpha: 0.05)
             : theme.colorScheme.surface,
       ),
       child: Padding(
@@ -1059,7 +1059,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1096,7 +1096,7 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.3),
+                      .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -1146,9 +1146,9 @@ class _QuestionDetailDialogState extends ConsumerState<QuestionDetailDialog>
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

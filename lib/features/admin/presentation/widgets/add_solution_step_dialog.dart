@@ -106,7 +106,7 @@ class _AddSolutionStepDialogState extends ConsumerState<AddSolutionStepDialog> {
                 // Context card - different for direct vs part-based steps
                 if (_isDirectStep)
                   Card(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -144,7 +144,7 @@ class _AddSolutionStepDialogState extends ConsumerState<AddSolutionStepDialog> {
                   )
                 else
                   Card(
-                    color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -292,7 +292,7 @@ class _AddSolutionStepDialogState extends ConsumerState<AddSolutionStepDialog> {
                 const SizedBox(height: 16),
 
                 Card(
-                  color: Colors.red.withOpacity(0.05),
+                  color: Colors.red.withValues(alpha: 0.05),
                   child: SwitchListTile(
                     title: const Text('Critical Step'),
                     subtitle: const Text(

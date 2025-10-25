@@ -149,7 +149,7 @@ class _EditSolutionStepDialogState
                 ),
                 const SizedBox(height: 16),
                 Card(
-                  color: Colors.red.withOpacity(0.05),
+                  color: Colors.red.withValues(alpha: 0.05),
                   child: SwitchListTile(
                     title: const Text('Critical Step'),
                     subtitle: const Text(

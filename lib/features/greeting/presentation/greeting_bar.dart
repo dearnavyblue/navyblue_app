@@ -25,11 +25,11 @@ class GreetingBar extends StatelessWidget {
     final theme = Theme.of(context);
     final msg = pickGreeting(displayName);
 
-    final leftColor = theme.colorScheme.onSecondary; // base stays light
+    final backgroundColor = theme.colorScheme.surface;
     final baseRight = colorForEmoji(msg.emoji, theme.colorScheme);
     final rightColor =
         _mix(baseRight, brandTint ?? baseRight, brandTint == null ? 0 : 0.25);
-    final textColor = _bestOn(leftColor);
+    final textColor = theme.colorScheme.onSurface;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -40,7 +40,7 @@ class GreetingBar extends StatelessWidget {
           child: Stack(
             children: [
               // 1) Base: light surface across entire card
-              Positioned.fill(child: ColoredBox(color: leftColor)),
+              Positioned.fill(child: ColoredBox(color: backgroundColor)),
 
               // 2) TOP slab: color -> white (fade) top→bottom, confined to <30% height
               Positioned(
@@ -53,11 +53,11 @@ class GreetingBar extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
-                        colors: [
+                      colors: [
                         rightColor, // strong at top-right
-                        Color.lerp(rightColor, leftColor, 0.55)!, // soften
-                        leftColor.withOpacity(0.0), // hard stop to transparent
-                        leftColor.withOpacity(0.0), // keep rest fully clear
+                        Color.lerp(rightColor, backgroundColor, 0.55)!, // soften
+                        backgroundColor.withValues(alpha: 0.0), // hard stop to transparent
+                        backgroundColor.withValues(alpha: 0.0), // keep rest fully clear
                       ],
                       stops: const [0.0, 0.18, 0.30, 1.0],
                       transform: const GradientRotation(-0.785398)
@@ -72,7 +72,7 @@ class GreetingBar extends StatelessWidget {
                   child: CustomPaint(
                     painter: CornerPatternPainter(
                       style: pattern,
-                      color: Colors.black.withOpacity(patternOpacity),
+                      color: Colors.black.withValues(alpha: patternOpacity),
                     ),
                   ),
                 ),
@@ -85,6 +85,12 @@ class GreetingBar extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    _EmojiPill(
+                      emoji: msg.emoji,
+                      bg: rightColor,
+                      fg: _bestOn(rightColor),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         mainAxisSize: MainAxisSize.min, // prevents overflow
@@ -102,7 +108,7 @@ class GreetingBar extends StatelessWidget {
                           Text(
                             msg.l2 ?? 'Welcome back',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: textColor.withOpacity(0.75),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -110,11 +116,6 @@ class GreetingBar extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _EmojiPill(
-                        emoji: msg.emoji,
-                        bg: rightColor,
-                        fg: _bestOn(rightColor)),
                   ],
                 ),
               ),
@@ -126,9 +127,14 @@ class GreetingBar extends StatelessWidget {
   }
 
   Color _mix(Color a, Color b, double t) {
-    int ch(int x, int y) => (x + ((y - x) * t)).round();
+    int ch(double start, double end) =>
+        ((start + ((end - start) * t)) * 255.0).round();
     return Color.fromARGB(
-        255, ch(a.red, b.red), ch(a.green, b.green), ch(a.blue, b.blue));
+      255,
+      ch(a.r, b.r),
+      ch(a.g, b.g),
+      ch(a.b, b.b),
+    );
   }
 
   Color _bestOn(Color c) =>
@@ -154,7 +160,7 @@ class _EmojiPill extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-                color: bg.withOpacity(0.35),
+                color: bg.withValues(alpha: 0.35),
                 blurRadius: 12,
                 offset: const Offset(0, 4))
           ],

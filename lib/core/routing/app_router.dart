@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:navyblue_app/features/attempts/presentation/screens/attempt_screen.dart';
 import 'package:navyblue_app/features/attempts/presentation/screens/user_attempts_screen.dart';
+import 'package:navyblue_app/features/attempts/presentation/screens/active_attempts_screen.dart';
 import 'package:navyblue_app/features/home/presentation/screens/home_screen.dart';
 import 'package:navyblue_app/features/papers/presentation/screens/papers_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -93,7 +94,7 @@ final authRouterNotifierProvider =
       print('Auth router state update error: $e');
       // Keep existing state on error
     }
-  });
+  }, fireImmediately: true);
 
   return notifier;
 });
@@ -233,6 +234,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoute.userAttempts.name,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const UserAttemptsScreen(),
+      ),
+      GoRoute(
+        path: '/user-attempts/in-progress',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ActiveAttemptsScreen(),
       ),
     ],
   );

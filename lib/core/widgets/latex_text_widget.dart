@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tex/flutter_tex.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class LaTeXTextWidget extends StatelessWidget {
   final String text;
@@ -35,13 +34,16 @@ class LaTeXTextWidget extends StatelessWidget {
     final blendedWeight =
         FontWeight.lerp(FontWeight.w300, FontWeight.w400, 0.5);
 
-    final defaultTextStyle =
-        style ??
-        GoogleFonts.crimsonPro(
+    final defaultTextStyle = style ??
+        theme.textTheme.bodyMedium?.copyWith(
           fontWeight: blendedWeight ?? FontWeight.w400,
           height: 1.35,
         ) ??
-        const TextStyle();
+        TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: blendedWeight ?? FontWeight.w400,
+          height: 1.35,
+        );
     final textColor = defaultTextStyle.color ??
         theme.textTheme.bodyMedium?.color ??
         Colors.black;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navyblue_app/core/theme/app_theme.dart';
+import '../../../../core/widgets/pill.dart';
 import '../../../attempts/domain/entities/attempt_config.dart';
 import '../../../auth/presentation/providers/auth_presentation_providers.dart';
 import '../../../attempts/presentation/providers/attempts_presentation_providers.dart';
@@ -99,7 +100,7 @@ class PaperCard extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: Colors.black.withValues(alpha: 0.25),
                           blurRadius: 4.34,
                           offset: const Offset(0, 4.34),
                         ),
@@ -180,13 +181,13 @@ class PaperCard extends ConsumerWidget {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.black.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(20),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Icons.login, size: 17, color: Colors.black),
               SizedBox(width: 8),
               Text(
@@ -208,20 +209,9 @@ class PaperCard extends ConsumerWidget {
     final showExam = paperAvailability.canStartExam;
 
     if (!showPractice && !showExam) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text(
-          'All attempts used',
-          style: TextStyle(
-            fontSize: 15.18,
-            color: Colors.black54,
-          ),
-          textAlign: TextAlign.center,
-        ),
+      return const Pill(
+        label: 'All attempts used',
+        variant: PillVariant.subtle,
       );
     }
 
@@ -230,74 +220,30 @@ class PaperCard extends ConsumerWidget {
       children: [
         if (showPractice)
           Expanded(
-            child: InkWell(
-              onTap: () => _startAttempt(context, ref,
-                  AttemptConfig.practice(paperAvailability.paper.id)),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(
-                      Icons.psychology_outlined,
-                      size: 17.35,
-                      color: Colors.black,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Start Practice',
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
+            child: Pill(
+              label: 'Start Practice',
+              variant: PillVariant.subtle,
+              leading: const Icon(Icons.psychology_outlined, size: 17.35),
+              onTap: () => _startAttempt(
+                context,
+                ref,
+                AttemptConfig.practice(paperAvailability.paper.id),
               ),
             ),
           ),
         if (showPractice && showExam) const SizedBox(width: 12),
         if (showExam)
           Expanded(
-            child: InkWell(
+            child: Pill(
+              label: 'Start Exam',
+              variant: PillVariant.subtle,
+              leading: const Icon(Icons.timer_outlined, size: 17.35),
               onTap: () => _startAttempt(
-                  context,
-                  ref,
-                  AttemptConfig.exam(paperAvailability.paper.id,
-                      paperAvailability.paper.durationMinutes)),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(
-                      Icons.timer_outlined,
-                      size: 17.35,
-                      color: Colors.black,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Start Exam',
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
+                context,
+                ref,
+                AttemptConfig.exam(
+                  paperAvailability.paper.id,
+                  paperAvailability.paper.durationMinutes,
                 ),
               ),
             ),
@@ -309,20 +255,13 @@ class PaperCard extends ConsumerWidget {
   // CRITICAL: Updated to await navigation and refresh on return
   Future<void> _startAttempt(
       BuildContext context, WidgetRef ref, AttemptConfig config) async {
-    print('=== STARTING ATTEMPT ===');
-    print('Paper ID: ${paperAvailability.paper.id}');
-    print('Mode: ${config.mode}');
-
     // Navigate and wait for return
     await context.push(
         '/attempt/${paperAvailability.paper.id}?mode=${config.mode.toLowerCase()}');
 
     // When we return, refresh the attempts list
-    print('=== RETURNED FROM ATTEMPT ===');
     if (context.mounted) {
-      print('Refreshing attempts after return...');
       await ref.read(userAttemptsControllerProvider.notifier).refreshAttempts();
-      print('Attempts refreshed');
     }
   }
 

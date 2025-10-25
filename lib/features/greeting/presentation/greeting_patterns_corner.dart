@@ -39,8 +39,8 @@ class CornerPatternPainter extends CustomPainter {
         // Opacity + size fall off with distance
         final t = 1.0 - (d / maxR);
         final r = 1.2 + 1.0 * t; // 1.2..2.2 px
-        final a = (p.color.opacity * (0.35 + 0.65 * t));
-        canvas.drawCircle(pos, r, p..color = p.color.withOpacity(a));
+        final a = (p.color.a * (0.35 + 0.65 * t));
+        canvas.drawCircle(pos, r, p..color = p.color.withValues(alpha: a));
       }
     }
   }
@@ -70,8 +70,8 @@ class CornerPatternPainter extends CustomPainter {
           ..moveTo(pos.dx - w / 2, pos.dy - h / 2)
           ..lineTo(pos.dx, pos.dy + h / 2)
           ..lineTo(pos.dx + w / 2, pos.dy - h / 2);
-        final alpha = (color.opacity * (0.25 + 0.55 * t));
-        canvas.drawPath(path, p..color = color.withOpacity(alpha));
+        final alpha = (color.a * (0.25 + 0.55 * t));
+        canvas.drawPath(path, p..color = color.withValues(alpha: alpha));
       }
     }
   }

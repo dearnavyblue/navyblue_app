@@ -86,7 +86,7 @@ class PaperTabWidget extends StatelessWidget {
         borderRadius: barBorderRadius,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.08),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -482,7 +482,7 @@ class PaperTabWidget extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: theme.colorScheme.primaryContainer),
       ),
@@ -747,10 +747,10 @@ class PaperTabWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.15),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: theme.colorScheme.primaryContainer.withOpacity(0.8),
+          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
         ),
       ),
       child: Row(

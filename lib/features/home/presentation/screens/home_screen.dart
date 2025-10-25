@@ -8,11 +8,12 @@ import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/greeting/presentation/greeting_bar.dart';
-import 'package:navyblue_app/features/greeting/presentation/greeting_patterns.dart';
 import 'package:navyblue_app/features/greeting/presentation/greeting_patterns_corner.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
 import 'package:navyblue_app/features/attempts/presentation/providers/attempts_presentation_providers.dart';
+import 'package:navyblue_app/features/attempts/presentation/widgets/user_attempts_filters.dart';
+import 'package:navyblue_app/features/attempts/presentation/widgets/user_attempt_card.dart';
 import 'package:navyblue_app/brick/repository.dart';
 import 'dart:async';
 
@@ -30,6 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _hasLoadedOnce = false;
   String? _selectedSubject;
   String? _selectedPaper;
+  Map<String, String> _completedAttemptFilters = {};
   int _lastAttemptCount = 0;
   DateTime? _lastRefreshTime;
   Timer? _debounceTimer;
@@ -42,6 +44,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
     });
+  }
+
+  List<StudentAttempt> _getFilteredCompletedAttempts(HomeState state) {
+    var attempts = List<StudentAttempt>.from(state.completedAttempts)
+      ..removeWhere((attempt) => attempt.completedAt == null)
+      ..sort((a, b) {
+        final aDate = a.completedAt ?? a.startedAt;
+        final bDate = b.completedAt ?? b.startedAt;
+        return bDate.compareTo(aDate);
+      });
+
+    final typeFilter = _completedAttemptFilters['type'];
+    if (typeFilter != null && typeFilter != 'All') {
+      attempts = attempts.where((attempt) {
+        if (typeFilter == 'Practice') return attempt.mode == 'PRACTICE';
+        if (typeFilter == 'Exam') return attempt.mode == 'EXAM';
+        return true;
+      }).toList();
+    }
+
+    final scoreFilter = _completedAttemptFilters['score'];
+    if (scoreFilter != null && scoreFilter != 'All') {
+      attempts = attempts.where((attempt) {
+        final score = attempt.percentageScore;
+        if (score == null) return scoreFilter == 'Unscored';
+        switch (scoreFilter) {
+          case 'Excellent (80%+)':
+            return score >= 80;
+          case 'Good (60-79%)':
+            return score >= 60 && score < 80;
+          case 'Needs Work (<60%)':
+            return score < 60;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    final periodFilter = _completedAttemptFilters['period'];
+    if (periodFilter != null && periodFilter != 'All Time') {
+      final now = DateTime.now();
+      attempts = attempts.where((attempt) {
+        final reference = attempt.completedAt ?? attempt.startedAt;
+        switch (periodFilter) {
+          case 'Today':
+            return reference.year == now.year &&
+                reference.month == now.month &&
+                reference.day == now.day;
+          case 'This Week':
+            final weekStart = now.subtract(Duration(days: now.weekday - 1));
+            return reference.isAfter(weekStart);
+          case 'This Month':
+            return reference.year == now.year && reference.month == now.month;
+          case 'Last 3 Months':
+            final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+            return reference.isAfter(threeMonthsAgo);
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    return attempts;
   }
 
   @override
@@ -102,7 +167,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
 
     // Set default selected subject if none is selected
-    if (_selectedSubject == null && state.progressSummary != null) {
+    if (_selectedSubject == null &&
+        state.progressSummary != null &&
+        state.progressSummary!.subjects.isNotEmpty) {
       _selectedSubject = state.progressSummary!.subjects.keys.first;
 
       // Set default selected paper (first paper of the selected subject)
@@ -200,7 +267,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: 16,
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -210,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: 12,
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -222,7 +289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   height: 12,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -245,27 +312,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'In Progress',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Continue where you left off',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ],
+              Text(
+                'Continue',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  height: 1.4,
+                  letterSpacing: -0.02,
+                  color: Colors.black,
+                ),
               ),
               if (state.hasActiveAttempts)
                 TextButton(
-                  onPressed: () => context.push('/user-attempts'),
+                  onPressed: () => context.push('/user-attempts/in-progress'),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
@@ -348,7 +408,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       BuildContext context, ThemeData theme, StudentAttempt attempt) {
     final scheme = theme.colorScheme;
     final status = theme.extension<StatusColors>()!;
-    final isExam = attempt.mode == 'EXAM';
 
     // Calculate progress (questions answered out of total)
     final totalQuestions = attempt.calculatedTotalSteps > 0
@@ -570,7 +629,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isPrimary
-                      ? theme.colorScheme.onPrimary.withOpacity(0.85)
+                      ? theme.colorScheme.onPrimary.withValues(alpha: 0.85)
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -634,27 +693,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final subjects = state.progressSummary!.subjects;
     final selectedProgress =
         _selectedSubject != null ? subjects[_selectedSubject] : null;
-    final txt = Theme.of(context).extension<AppTextStyles>()!;
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Title
-          Text(
+          const Text(
             'Exam Readiness',
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: TextStyle(
+              fontFamily: 'Inter',
               fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
+              fontSize: 16,
+              height: 1.4,
+              letterSpacing: -0.02,
+              color: Color(0xFF000000),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
+          const SizedBox(height: 4),
+          const Text(
             'See how ready you are for the exams',
-            style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              height: 1.4,
+              letterSpacing: -0.02,
+              color: Color(0xFF9C9C9C),
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -716,7 +782,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildSubjectCard(ThemeData theme, dynamic subjectProgress) {
-    final txt = Theme.of(context).extension<AppTextStyles>()!;
     final papers = subjectProgress.papers as Map<String, dynamic>;
 
     // Calculate overall readiness from all papers
@@ -727,13 +792,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       paperCount++;
     }
     final overallReadiness = paperCount > 0 ? totalScore / paperCount : 0.0;
-    final readinessLevel = _getReadinessLevelFromScore(overallReadiness);
+    final readinessLevel = _preparednessLevel(overallReadiness);
+    final readinessColor = _preparednessColor(overallReadiness, theme);
+    final readinessDescription = _subjectPreparednessDescription(overallReadiness);
 
     // Get selected paper data
     final selectedPaperProgress = papers[_selectedPaper];
     if (selectedPaperProgress == null) return const SizedBox.shrink();
 
     final topics = selectedPaperProgress.topics as Map<String, dynamic>;
+    final topicEntries = topics.entries.toList();
 
     return Card(
       margin: EdgeInsets.zero,
@@ -761,19 +829,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _statusColor(context, readinessLevel),
-                    borderRadius: BorderRadius.circular(12),
+                    color: readinessColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     readinessLevel,
-                    style: txt.extraSmall.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: readinessColor,
+                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -786,71 +852,105 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: overallReadiness / 100,
-                minHeight: 5,
+                minHeight: 6,
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation(
-                  overallReadiness > 0
-                      ? _statusColor(context, readinessLevel)
-                      : theme.colorScheme.outline,
+                  overallReadiness > 0 ? readinessColor : theme.colorScheme.outline,
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              readinessDescription,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                fontWeight: FontWeight.w400,
+                fontSize: 10,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
 
             // Papers Section - Show all papers with click functionality
-            Row(
-              children: papers.entries.map((entry) {
-                final paperType = entry.key;
-                final paperProgress = entry.value;
-                final isSelected = _selectedPaper == paperType;
-                final paperName = paperType
-                    .split('_')
-                    .map((word) =>
-                        word[0].toUpperCase() + word.substring(1).toLowerCase())
-                    .join(' ');
-
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                        right: entry.key != papers.keys.last ? 12 : 0),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedPaper = paperType;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? theme.colorScheme.primaryContainer
-                                  .withOpacity(0.3)
-                              : null,
-                          borderRadius: BorderRadius.circular(8),
-                          border: isSelected
-                              ? Border.all(
-                                  color: theme.colorScheme.primary,
-                                  width: 2,
-                                )
-                              : null,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: papers.entries
+                    .map((entry) {
+                      final paperType = entry.key;
+                      final paperProgress = entry.value;
+                      final isSelected = _selectedPaper == paperType;
+                      final paperName = paperType
+                          .split('_')
+                          .map((word) =>
+                              word[0].toUpperCase() + word.substring(1).toLowerCase())
+                          .join(' ');
+                      final tile = Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: entry.key != papers.keys.last ? 12 : 0,
+                          ),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedPaper = paperType;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? theme.colorScheme.primaryContainer
+                                        .withValues(alpha: 0.3)
+                                    : null,
+                                borderRadius: BorderRadius.circular(8),
+                                border: isSelected
+                                    ? Border.all(
+                                        color: theme.colorScheme.primary,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: _buildPaperProgress(
+                                theme,
+                                paperName,
+                                paperProgress.averageScore ?? 0.0,
+                              ),
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.all(8),
-                        child: _buildPaperProgress(
-                          theme,
-                          paperName,
-                          paperProgress.averageScore ?? 0.0,
+                      );
+                      if (entry.key == papers.keys.last) {
+                        return [tile];
+                      }
+                      return [
+                        tile,
+                        VerticalDivider(
+                          width: 12,
+                          thickness: 1,
+                          color:
+                              theme.colorScheme.outline.withValues(alpha: 0.15),
                         ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                      ];
+                    })
+                    .expand((widgets) => widgets)
+                    .toList(),
+              ),
             ),
             const SizedBox(height: 16),
+            Divider(
+              height: 24,
+              thickness: 1,
+              color: theme.colorScheme.outline.withValues(alpha: 0.15),
+            ),
 
             // Topics Breakdown for selected paper
-            if (topics.isNotEmpty) ...[
-              ...topics.entries.map((entry) {
+            if (topicEntries.isNotEmpty)
+              ...List.generate(topicEntries.length, (index) {
+                final entry = topicEntries[index];
+                final isLastTopic = index == topicEntries.length - 1;
                 final topicName = entry.key;
                 final topicProgress = entry.value;
                 final topicAccuracy = topicProgress.performance ?? 0.0;
@@ -859,53 +959,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     .map((word) =>
                         word[0].toUpperCase() + word.substring(1).toLowerCase())
                     .join(' ');
+                final prepLevel = _preparednessLevel(topicAccuracy);
+                final prepDescription = _topicPreparednessDescription(topicAccuracy);
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Topic name with % Ready
-                      Row(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            topicDisplayName,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurfaceVariant,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 2,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      topicDisplayName,
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      softWrap: true,
+                                    ),
+                                    Text(
+                                      '${topicAccuracy.toInt()}%',
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: _preparednessColor(topicAccuracy, theme),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _preparednessColor(topicAccuracy, theme)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  prepLevel,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: _preparednessColor(topicAccuracy, theme),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: topicAccuracy / 100,
+                              minHeight: 6,
+                              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.6),
+                              valueColor: AlwaysStoppedAnimation(
+                                _preparednessColor(topicAccuracy, theme),
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(height: 8),
                           Text(
-                            '${topicAccuracy.toInt()}%',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                            prepDescription,
+                            softWrap: true,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.65),
+                              fontWeight: FontWeight.w400,
+                              fontSize: 10,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: topicAccuracy / 100,
-                          minHeight: 5,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation(
-                            topicAccuracy > 0
-                                ? _statusColor(context,
-                                    _getReadinessLevelFromScore(topicAccuracy))
-                                : theme.colorScheme.outline,
-                          ),
-                        ),
+                    ),
+                    if (!isLastTopic)
+                      Divider(
+                        height: 20,
+                        thickness: 1,
+                        color: theme.colorScheme.outline.withValues(alpha: 0.15),
                       ),
-                    ],
-                  ),
+                  ],
                 );
               }),
-            ],
           ],
         ),
       ),
@@ -955,113 +1103,117 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildActivitySection(
       BuildContext context, ThemeData theme, HomeState state) {
+    final filteredAttempts = _getFilteredCompletedAttempts(state);
+    final attemptsToShow = filteredAttempts.take(4).toList();
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Recent Activity',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Attempts',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        height: 1.4,
+                        letterSpacing: -0.02,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Your previous attempts',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        height: 1.4,
+                        letterSpacing: -0.02,
+                        color: Color(0xFF9C9C9C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (filteredAttempts.isNotEmpty)
+                TextButton(
+                  onPressed: () => context.push('/user-attempts'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          UserAttemptsFilters(
+            activeFilters: _completedAttemptFilters,
+            includeStatus: false,
+            compact: true,
+            onFiltersChanged: (filters) {
+              setState(() => _completedAttemptFilters = filters);
+            },
           ),
           const SizedBox(height: 12),
-          if (state.hasActiveAttempts) ...[
-            Text(
-              'Active Attempts',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+          if (attemptsToShow.isEmpty)
+            _buildNoAttemptsCard(context, theme)
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: attemptsToShow.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final attempt = attemptsToShow[index];
+                return UserAttemptCard(
+                  attempt: attempt,
+                  paper: null,
+                  showModeBadge: true,
+                  onTap: () async {
+                    await context.push(
+                      '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}',
+                    );
+                    if (mounted) {
+                      _loadDashboardData();
+                    }
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            ...state.activeAttempts.take(3).map((attempt) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildActiveAttemptCard(context, theme, attempt),
-              );
-            }),
-            if (state.activeAttempts.length > 3)
-              TextButton(
-                onPressed: () => context.push('/user-attempts'),
-                child: Text('View all ${state.activeAttempts.length} attempts'),
-              ),
-          ] else ...[
-            _buildNoActivityCard(context, theme),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildActiveAttemptCard(
-      BuildContext context, ThemeData theme, StudentAttempt attempt) {
-    final isExam = attempt.mode == 'EXAM';
-    final timeElapsed = DateTime.now().difference(attempt.startedAt);
-    final scheme = theme.colorScheme;
-    final container =
-        isExam ? scheme.tertiaryContainer : scheme.secondaryContainer;
-    final onContainer =
-        isExam ? scheme.onTertiaryContainer : scheme.onSecondaryContainer;
-
-    return Card(
-      child: InkWell(
-        onTap: () => context.push('/user-attempts'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: container,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  isExam ? Icons.timer : Icons.psychology,
-                  size: 20,
-                  color: onContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${isExam ? 'Exam' : 'Practice'} in Progress',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Started ${_formatDuration(timeElapsed)} ago',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoActivityCard(BuildContext context, ThemeData theme) {
+  Widget _buildNoAttemptsCard(BuildContext context, ThemeData theme) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1070,18 +1222,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Icon(
               Icons.auto_stories_outlined,
               size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
-              'No recent activity',
+              'No completed attempts yet',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Start practicing to see your progress here',
+              'Complete a paper to unlock your stats here.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1140,12 +1292,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
+  String _preparednessLevel(double percent) {
+    if (percent >= 80) return 'Fully prepared';
+    if (percent >= 70) return 'Well prepared';
+    if (percent >= 60) return 'Prepared with gaps';
+    if (percent >= 50) return 'Barely prepared';
+    if (percent >= 40) return 'Underprepared';
+    return 'Not prepared';
+  }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+  String _subjectPreparednessDescription(double percent) {
+    if (percent >= 80) {
+      return "Ready for exams. Do timed practice papers.";
+    } else if (percent >= 70) {
+      return "Good work. Focus on weak topics listed above.";
+    } else if (percent >= 60) {
+      return "You'll pass. Work on weak areas for a better mark.";
+    } else if (percent >= 50) {
+      return "You're at risk. Make a revision plan now.";
+    } else if (percent >= 40) {
+      return "You'll probably fail. See your teacher urgently.";
+    } else {
+      return "You're failing. You need help immediately.";
+    }
+  }
+
+  String _topicPreparednessDescription(double percent) {
+    if (percent >= 80) {
+      return "You know this topic well. Practice exam questions.";
+    } else if (percent >= 70) {
+      return "You know most of it. Work on weak spots.";
+    } else if (percent >= 60) {
+      return "You get the basics but make mistakes. Practice more.";
+    } else if (percent >= 50) {
+      return "You're struggling with key ideas. Redo examples.";
+    } else if (percent >= 40) {
+      return "You're missing basics. Get help from your teacher.";
+    } else {
+      return "You can't answer basic questions. See your teacher now.";
+    }
+  }
+
+  Color _preparednessColor(double percent, ThemeData theme) {
+    if (percent >= 80) return const Color(0xFF16A34A);
+    if (percent >= 70) return const Color(0xFF65A30D);
+    if (percent >= 60) return const Color(0xFFF59E0B);
+    if (percent >= 50) return const Color(0xFFF97316);
+    if (percent >= 40) return const Color(0xFFDC2626);
+    return const Color(0xFF991B1B);
   }
 
   Color _statusColor(BuildContext context, String level) {
@@ -1163,14 +1357,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Theme.of(context).colorScheme.primary;
     }
   }
-
-  String _formatDuration(Duration duration) {
-    if (duration.inDays > 0) return '${duration.inDays}d';
-    if (duration.inHours > 0) return '${duration.inHours}h';
-    if (duration.inMinutes > 0) return '${duration.inMinutes}m';
-    return 'now';
-  }
-
   String _getReadinessLevelFromScore(double score) {
     if (score >= 80) return 'Excellent';
     if (score >= 65) return 'Good';

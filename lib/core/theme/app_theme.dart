@@ -1,6 +1,5 @@
 // app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
 /// --- Custom Extensions ---
@@ -189,7 +188,7 @@ class ProvinceColors extends ThemeExtension<ProvinceColors> {
 class AppTextStyles extends ThemeExtension<AppTextStyles> {
   final TextStyle extraSmall;
   final TextStyle extraExtraSmall; // optional
-
+  
   const AppTextStyles({
     required this.extraSmall,
     required this.extraExtraSmall,
@@ -216,6 +215,7 @@ class AppTextStyles extends ThemeExtension<AppTextStyles> {
     );
   }
 }
+
 /// --- Core Theme Builder ---
 
 class AppTheme {
@@ -253,8 +253,8 @@ class AppTheme {
         inverseSurface: const Color(0xFF2C2C2C),
         onInverseSurface: Colors.white,
         inversePrimary: Color(primaryCore.primary.get(80)),
-        shadow: Colors.black.withOpacity(0.25),
-        scrim: Colors.black.withOpacity(0.45),
+        shadow: Colors.black.withValues(alpha: 0.25),
+        scrim: Colors.black.withValues(alpha: 0.45),
       );
     } else {
       return ColorScheme(
@@ -299,13 +299,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.inter().fontFamily,
-      textTheme: GoogleFonts.interTextTheme(
-        Typography.material2021(platform: TargetPlatform.android).black.apply(
-          bodyColor: scheme.onSurface,
-          displayColor: scheme.onSurface,
-        ),
-      ),
+      fontFamily: 'Inter',
+      textTheme: _interTextTheme(scheme),
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -362,7 +357,7 @@ class AppTheme {
           info: Colors.blue.shade600,
           negative: Colors.red.shade600,
         ),
-         const ProvinceColors(
+        const ProvinceColors(
           gauteng: Color(0xFF64A2FC),
           kwazuluNatal: Color(0xFF95BBC4),
           northWest: Color(0xFFEC8C26),
@@ -378,11 +373,13 @@ class AppTheme {
             fontSize: 10, // pick your size
             height: 1.2,
             fontWeight: FontWeight.w400,
+            fontFamily: 'Inter',
             color: scheme.onSurfaceVariant, // or onSurface
           ),
           extraExtraSmall: TextStyle(
             fontSize: 9,
             height: 1.2,
+            fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
             color: scheme.onSurfaceVariant,
           ),
@@ -390,4 +387,20 @@ class AppTheme {
       ],
     );
   }
+}
+
+TextTheme _interTextTheme(ColorScheme scheme) {
+  final baseTypography = Typography.material2021(
+    platform: TargetPlatform.android,
+  );
+
+  final base = scheme.brightness == Brightness.dark
+      ? baseTypography.white
+      : baseTypography.black;
+
+  return base.apply(
+    fontFamily: 'Inter',
+    bodyColor: scheme.onSurface,
+    displayColor: scheme.onSurface,
+  );
 }

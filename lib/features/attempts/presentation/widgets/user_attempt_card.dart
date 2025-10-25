@@ -6,17 +6,20 @@ import 'package:navyblue_app/brick/repository.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/core/theme/app_theme.dart';
+import '../../../../core/widgets/pill.dart';
 
 class UserAttemptCard extends StatelessWidget {
   final StudentAttempt attempt;
   final ExamPaper? paper;
   final VoidCallback? onTap;
+  final bool showModeBadge;
 
   const UserAttemptCard({
     super.key,
     required this.attempt,
     this.paper,
     this.onTap,
+    this.showModeBadge = false,
   });
 
   // Get progress from server-calculated data or fallback to stored values
@@ -50,12 +53,11 @@ class UserAttemptCard extends StatelessWidget {
     try {
       final theme = Theme.of(context);
       final scheme = theme.colorScheme;
-      final isExam = attempt.mode == 'EXAM';
       final isCompleted = attempt.isCompleted;
       final status = Theme.of(context).extension<StatusColors>()!;
       final progress = _getProgress();
 
-      return Card(
+      final card = Card(
         elevation: 2,
         margin: EdgeInsets.zero,
         color: scheme.surface,
@@ -190,47 +192,64 @@ class UserAttemptCard extends StatelessWidget {
                   ],
                 ),
 
-                // View Results button - ONLY difference for completed attempts
-                if (isCompleted) ...[
-                  const SizedBox(height: 12),
-                  InkWell(
-                    onTap: onTap ?? () => _resumeAttempt(context),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.visibility_outlined,
-                            size: 17.35,
-                            color: Colors.black,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'View Results',
-                            style: TextStyle(
-                              fontSize: 14,
-                              height: 1.4,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+        // View Results button - ONLY difference for completed attempts
+        if (isCompleted) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Pill(
+                  label: 'View Results',
+                  variant: PillVariant.subtle,
+                  leading: const Icon(Icons.visibility_outlined, size: 17.35),
+                  onTap: onTap ?? () => _resumeAttempt(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  ),
+        ),
+      );
+
+      if (!showModeBadge) {
+        return card;
+      }
+
+      final modeLabel = attempt.mode == 'EXAM' ? 'Exam' : 'Practice';
+      final badgeColor = attempt.mode == 'EXAM'
+          ? theme.colorScheme.primary
+          : theme.colorScheme.secondary;
+
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          card,
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                modeLabel,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: Colors.white,
+                  height: 1.2,
+                  letterSpacing: -0.01,
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       );
     } catch (e) {
       // Return error card
@@ -328,10 +347,5 @@ class UserAttemptCard extends StatelessWidget {
   void _resumeAttempt(BuildContext context) {
     context.push(
         '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}');
-  }
-
-  void _startNewAttempt(BuildContext context) {
-    context
-        .push('/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}');
   }
 }
