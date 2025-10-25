@@ -111,7 +111,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
               color: theme.colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.1),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
                   width: 1,
                 ),
               ),
@@ -147,10 +147,10 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
           //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           //     decoration: BoxDecoration(
           //       color:
-          //           theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          //           theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           //       border: Border(
           //         bottom: BorderSide(
-          //           color: theme.colorScheme.outline.withOpacity(0.1),
+          //           color: theme.colorScheme.outline.withValues(alpha: 0.1),
           //           width: 1,
           //         ),
           //       ),
@@ -161,14 +161,14 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
           //         Text(
           //           _getPaginationText(state),
           //           style: theme.textTheme.bodySmall?.copyWith(
-          //             color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           //           ),
           //         ),
           //         if (state.hasNextAttemptsPage)
           //           Text(
           //             'Page ${state.currentAttemptsPage} of ${state.totalAttemptsPages}',
           //             style: theme.textTheme.bodySmall?.copyWith(
-          //               color: theme.colorScheme.onSurface.withOpacity(0.7),
+          //               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           //             ),
           //           ),
           //       ],
@@ -199,7 +199,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
             Text(
               'Loading your attempts...',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -236,7 +236,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
                     Text(
                       'Loading more attempts...',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ] else ...[
@@ -398,7 +398,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
@@ -427,7 +427,7 @@ class _UserAttemptsScreenState extends ConsumerState<UserAttemptsScreen>
                       ? 'Try adjusting your search or filters'
                       : 'Start practicing to build your readiness score and track your progress'),
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
               textAlign: TextAlign.center,

@@ -8,7 +8,6 @@ import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/features/auth/presentation/providers/auth_presentation_providers.dart';
 import 'package:navyblue_app/features/greeting/presentation/greeting_bar.dart';
-import 'package:navyblue_app/features/greeting/presentation/greeting_patterns.dart';
 import 'package:navyblue_app/features/greeting/presentation/greeting_patterns_corner.dart';
 import 'package:navyblue_app/features/home/presentation/controllers/home_controller.dart';
 import 'package:navyblue_app/features/home/presentation/providers/home_presentation_providers.dart';
@@ -202,7 +201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: 16,
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -212,7 +211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               height: 12,
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -224,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   height: 12,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -350,7 +349,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       BuildContext context, ThemeData theme, StudentAttempt attempt) {
     final scheme = theme.colorScheme;
     final status = theme.extension<StatusColors>()!;
-    final isExam = attempt.mode == 'EXAM';
 
     // Calculate progress (questions answered out of total)
     final totalQuestions = attempt.calculatedTotalSteps > 0
@@ -572,7 +570,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isPrimary
-                      ? theme.colorScheme.onPrimary.withOpacity(0.85)
+                      ? theme.colorScheme.onPrimary.withValues(alpha: 0.85)
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -636,8 +634,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final subjects = state.progressSummary!.subjects;
     final selectedProgress =
         _selectedSubject != null ? subjects[_selectedSubject] : null;
-    final txt = Theme.of(context).extension<AppTextStyles>()!;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -826,7 +822,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         decoration: BoxDecoration(
                           color: isSelected
                               ? theme.colorScheme.primaryContainer
-                                  .withOpacity(0.3)
+                                  .withValues(alpha: 0.3)
                               : null,
                           borderRadius: BorderRadius.circular(8),
                           border: isSelected
@@ -1072,7 +1068,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Icon(
               Icons.auto_stories_outlined,
               size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 12),
             Text(
@@ -1142,14 +1138,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   Color _statusColor(BuildContext context, String level) {
     final status = Theme.of(context).extension<StatusColors>()!;
     switch (level.toLowerCase()) {

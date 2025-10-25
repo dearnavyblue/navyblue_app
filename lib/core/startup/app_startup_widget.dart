@@ -105,7 +105,7 @@ class AppStartupErrorWidget extends StatelessWidget {
               Text(
                 'Something went wrong during app initialization. Please try again or contact support if the problem persists.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: scheme.onSurface.withOpacity(0.8),
+                  color: scheme.onSurface.withValues(alpha: 0.8),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -115,7 +115,7 @@ class AppStartupErrorWidget extends StatelessWidget {
                   title: Text(
                     'Error Details',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withOpacity(0.7),
+                      color: scheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   children: [
@@ -124,7 +124,7 @@ class AppStartupErrorWidget extends StatelessWidget {
                       child: Text(
                         message,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurface.withOpacity(0.6),
+                          color: scheme.onSurface.withValues(alpha: 0.6),
                           fontFamily: 'monospace',
                         ),
                       ),

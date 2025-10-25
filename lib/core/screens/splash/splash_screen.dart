@@ -87,7 +87,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   value: widget.progressValue,
                   minHeight: 6,
                   color: Colors.white,
-                  backgroundColor: Colors.white.withOpacity(0.25),
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
                 ),
               ),
               const SizedBox(height: 12),
@@ -104,7 +104,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: Colors.white.withOpacity(0.7)),
+                    ?.copyWith(color: Colors.white.withValues(alpha: 0.7)),
               ),
             ],
           ),

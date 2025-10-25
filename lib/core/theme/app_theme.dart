@@ -253,8 +253,8 @@ class AppTheme {
         inverseSurface: const Color(0xFF2C2C2C),
         onInverseSurface: Colors.white,
         inversePrimary: Color(primaryCore.primary.get(80)),
-        shadow: Colors.black.withOpacity(0.25),
-        scrim: Colors.black.withOpacity(0.45),
+        shadow: Colors.black.withValues(alpha: 0.25),
+        scrim: Colors.black.withValues(alpha: 0.45),
       );
     } else {
       return ColorScheme(
@@ -373,11 +373,13 @@ class AppTheme {
             fontSize: 10, // pick your size
             height: 1.2,
             fontWeight: FontWeight.w400,
+            fontFamily: 'Inter',
             color: scheme.onSurfaceVariant, // or onSurface
           ),
           extraExtraSmall: TextStyle(
             fontSize: 9,
             height: 1.2,
+            fontFamily: 'Inter',
             fontWeight: FontWeight.w400,
             color: scheme.onSurfaceVariant,
           ),

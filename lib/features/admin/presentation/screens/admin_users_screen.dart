@@ -187,8 +187,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                               child: ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: user.role == 'ADMIN'
-                                      ? Colors.purple.withOpacity(0.2)
-                                      : Colors.blue.withOpacity(0.2),
+                                      ? Colors.purple.withValues(alpha: 0.2)
+                                      : Colors.blue.withValues(alpha: 0.2),
                                   child: Icon(
                                     user.role == 'ADMIN'
                                         ? Icons.admin_panel_settings
@@ -234,7 +234,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                               vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.orange.withOpacity(0.2),
+                                              color: Colors.orange.withValues(alpha: 0.2),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: Text(
@@ -256,8 +256,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                     Container(
                                       decoration: BoxDecoration(
                                         color: user.role == 'ADMIN'
-                                            ? Colors.purple.withOpacity(0.1)
-                                            : Colors.blue.withOpacity(0.1),
+                                            ? Colors.purple.withValues(alpha: 0.1)
+                                            : Colors.blue.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: TextButton(

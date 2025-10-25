@@ -135,8 +135,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final maxFormWidth = _clamp(_w(context) * 0.92, 320, 420);
     final headerHeight = _clamp(_h(context) * 0.2, 140, 180);
-    const horizontalInset = 16.0;
-    const headerHorizontalInset = 0.0;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -200,7 +198,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withValues(alpha: 0.9),
                                       fontWeight: FontWeight.w500,
                                     ),
                               ),
@@ -310,7 +308,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               builder: (context, constraints) {
                                 final itemWidth = constraints.maxWidth;
                                 return DropdownButtonFormField<String>(
-                                  value: _selectedGrade,
+                                  initialValue: _selectedGrade,
                                   isExpanded: true,
                                   icon: const Icon(
                                     Icons.keyboard_arrow_down_rounded,
@@ -353,7 +351,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               builder: (context, constraints) {
                                 final itemWidth = constraints.maxWidth;
                                 return DropdownButtonFormField<String>(
-                                  value: _selectedSyllabus,
+                                  initialValue: _selectedSyllabus,
                                   isExpanded: true,
                                   icon: const Icon(
                                     Icons.keyboard_arrow_down_rounded,
@@ -397,7 +395,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               builder: (context, constraints) {
                                 final itemWidth = constraints.maxWidth;
                                 return DropdownButtonFormField<String>(
-                                  value: _selectedProvince,
+                                  initialValue: _selectedProvince,
                                   isExpanded: true,
                                   icon: const Icon(
                                     Icons.keyboard_arrow_down_rounded,
@@ -488,7 +486,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
-                                        .withOpacity(0.7),
+                                        .withValues(alpha: 0.7),
                                   ),
                           children: const [
                             TextSpan(
@@ -520,7 +518,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
-                                      .withOpacity(0.7),
+                                      .withValues(alpha: 0.7),
                                 ),
                           ),
                           TextButton(

@@ -36,7 +36,7 @@ class _PaperSearchBarState extends State<PaperSearchBar> {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8)
       ),
       child: TextField(
@@ -45,12 +45,12 @@ class _PaperSearchBarState extends State<PaperSearchBar> {
         decoration: InputDecoration(
           hintText: 'Search papers...',
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
           prefixIcon: Icon(
             Icons.search,
             size: 22,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(

@@ -1,4 +1,4 @@
-import 'package:navyblue_app/features/greeting/data/%20greeting_catalog.dart';
+import 'package:navyblue_app/features/greeting/data/greeting_catalog.dart';
 import '../domain/greeting_message.dart';
 
 
@@ -24,7 +24,7 @@ GreetingMessage pickGreeting(
   final key = '${name.trim().toLowerCase()}::$dateKey::$partKey::$seed';
   final h = _fnv1a32(key);
 
-  final buckets = GreetingCatalog.buckets;
+  const buckets = GreetingCatalog.buckets;
   final bucket = buckets[h % buckets.length];
   final msg = bucket[(h ~/ buckets.length) % bucket.length];
 
@@ -55,4 +55,3 @@ int _fnv1a32(String s) {
   }
   return hash & 0x7FFFFFFF;
 }
-

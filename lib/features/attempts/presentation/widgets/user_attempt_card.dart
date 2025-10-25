@@ -6,6 +6,7 @@ import 'package:navyblue_app/brick/repository.dart';
 import 'package:navyblue_app/core/config/app_config.dart';
 import 'package:navyblue_app/core/constants/app_constants.dart';
 import 'package:navyblue_app/core/theme/app_theme.dart';
+import '../../../../core/widgets/pill.dart';
 
 class UserAttemptCard extends StatelessWidget {
   final StudentAttempt attempt;
@@ -50,7 +51,6 @@ class UserAttemptCard extends StatelessWidget {
     try {
       final theme = Theme.of(context);
       final scheme = theme.colorScheme;
-      final isExam = attempt.mode == 'EXAM';
       final isCompleted = attempt.isCompleted;
       final status = Theme.of(context).extension<StatusColors>()!;
       final progress = _getProgress();
@@ -193,38 +193,11 @@ class UserAttemptCard extends StatelessWidget {
                 // View Results button - ONLY difference for completed attempts
                 if (isCompleted) ...[
                   const SizedBox(height: 12),
-                  InkWell(
+                  Pill(
+                    label: 'View Results',
+                    variant: PillVariant.subtle,
+                    leading: const Icon(Icons.visibility_outlined, size: 17.35),
                     onTap: onTap ?? () => _resumeAttempt(context),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.visibility_outlined,
-                            size: 17.35,
-                            color: Colors.black,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'View Results',
-                            style: TextStyle(
-                              fontSize: 14,
-                              height: 1.4,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ],
@@ -328,10 +301,5 @@ class UserAttemptCard extends StatelessWidget {
   void _resumeAttempt(BuildContext context) {
     context.push(
         '/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}&resume=${attempt.id}');
-  }
-
-  void _startNewAttempt(BuildContext context) {
-    context
-        .push('/attempt/${attempt.paperId}?mode=${attempt.mode.toLowerCase()}');
   }
 }

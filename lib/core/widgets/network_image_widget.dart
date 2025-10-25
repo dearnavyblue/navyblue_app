@@ -65,7 +65,7 @@ class NetworkImageWidget extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: borderRadius ?? BorderRadius.circular(8),
         border: border ?? Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.3),
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
         ),
         color: backgroundColor,
       ),
@@ -171,7 +171,7 @@ class NetworkImageWidget extends StatelessWidget {
                     : error.toString(),
                 style: TextStyle(
                   fontSize: 8,
-                  color: theme.colorScheme.onErrorContainer.withOpacity(0.7),
+                  color: theme.colorScheme.onErrorContainer.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,

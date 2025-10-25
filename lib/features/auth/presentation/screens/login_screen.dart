@@ -6,7 +6,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:navyblue_app/features/auth/presentation/controllers/auth_controller.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/config/app_config.dart';
 import '../../domain/validators/auth_validators.dart';
 import '../providers/auth_presentation_providers.dart';
 
@@ -38,7 +37,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // tokens
   static const _brandBlue = Color(0xFF1C34C5);
-  static const _inputBorder = Color(0xFFE0E0E0);
   static const _quoteInk = _brandBlue;
 
   Widget _buildGradientQuote(String text, double fontSize) {
@@ -110,15 +108,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // —— responsiveness
   double _w(BuildContext c) => MediaQuery.of(c).size.width;
-  double _h(BuildContext c) => MediaQuery.of(c).size.height;
   double _clamp(double v, double min, double max) =>
       v < min ? min : (v > max ? max : v);
-  // width-based gentle scale (360→600dp → up to +25%)
-  double _scale(BuildContext c, double base) {
-    final w = _clamp(_w(c), 320, 600);
-    final t = (w - 360) / (600 - 360);
-    return base + (base * 0.25) * t;
-  }
 
   InputDecoration _fieldDecoration({
     required BuildContext context,
@@ -214,7 +205,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               final maxFormWidth = _clamp(_w(context) * 0.92, 320, 420);
               final headerHeight =
                   _clamp(constraints.maxHeight * 0.42, 260, 360);
-              const horizontalInset = 16.0;
 
               return Center(
                 child: ConstrainedBox(

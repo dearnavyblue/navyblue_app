@@ -55,7 +55,7 @@ class MemoTabWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 14,
             offset: const Offset(0, 5),
           ),
@@ -183,13 +183,13 @@ class MemoTabWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
                     border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Padding(
@@ -287,7 +287,7 @@ class MemoTabWidget extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.15),
+          color: theme.colorScheme.outline.withValues(alpha: 0.15),
         ),
       ),
       child: Column(
@@ -301,9 +301,9 @@ class MemoTabWidget extends StatelessWidget {
           // Subtle status tint on left content only
           Color leftBg = Colors.transparent;
           if (marks > 0 && status == 'CORRECT') {
-            leftBg = Colors.green.withOpacity(0.10);
+            leftBg = Colors.green.withValues(alpha: 0.10);
           } else if (marks > 0 && status == 'INCORRECT') {
-            leftBg = Theme.of(context).colorScheme.error.withOpacity(0.08);
+            leftBg = Theme.of(context).colorScheme.error.withValues(alpha: 0.08);
           }
 
           return Column(
@@ -337,7 +337,7 @@ class MemoTabWidget extends StatelessWidget {
                   color: Theme.of(context)
                       .colorScheme
                       .outlineVariant
-                      .withOpacity(0.6),
+                      .withValues(alpha: 0.6),
                 ),
             ],
           );
@@ -434,7 +434,7 @@ class MemoTabWidget extends StatelessWidget {
             border: Border.all(
               color: active
                   ? activeColor
-                  : theme.colorScheme.outline.withOpacity(0.35),
+                  : theme.colorScheme.outline.withValues(alpha: 0.35),
               width: 1.5,
             ),
           ),
@@ -443,7 +443,7 @@ class MemoTabWidget extends StatelessWidget {
             size: 18,
             color: active
                 ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
         ),
       );
